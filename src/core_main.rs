@@ -716,6 +716,42 @@ pub fn core_main() -> Option<Vec<String>> {
                 crate::flutter::connection_manager::start_cm_no_ui();
             }
             return None;
+        } else if args[0] == "--api-server" {
+            #[cfg(feature = "api-server")]
+            {
+                let mut bind = "127.0.0.1:21120".to_string();
+                let mut token = String::new();
+                let mut i = 1;
+                while i < args.len() {
+                    match args[i].as_str() {
+                        "--bind" => {
+                            if i + 1 < args.len() {
+                                bind = args[i + 1].clone();
+                                i += 2;
+                                continue;
+                            }
+                        }
+                        "--token" => {
+                            if i + 1 < args.len() {
+                                token = args[i + 1].clone();
+                                i += 2;
+                                continue;
+                            }
+                        }
+                        _ => {}
+                    }
+                    i += 1;
+                }
+                // Pure outbound controller; host --server is not started for this mode.
+                crate::api_server::run(bind, token);
+            }
+            #[cfg(not(feature = "api-server"))]
+            {
+                eprintln!(
+                    "--api-server requires building with --features api-server"
+                );
+            }
+            return None;
         } else if args[0] == "--whiteboard" {
             #[cfg(not(any(target_os = "android", target_os = "ios")))]
             {
