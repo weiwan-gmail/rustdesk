@@ -26,5 +26,22 @@ curl -fsS "${AUTH[@]}" -H 'Content-Type: application/json' \
 curl -fsS "${AUTH[@]}" "$BASE/api/v1/sessions/$SID/clipboard" | grep -q 'clip-test'
 echo "clipboard ok"
 
+# OS login endpoint (no remote Windows required; empty creds should 400)
+code=$(curl -sS -o /tmp/rd-oslogin.json -w '%{http_code}' "${AUTH[@]}" \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"","password":""}' \
+  "$BASE/api/v1/sessions/$SID/os-login" || true)
+[[ "$code" == "400" ]] || { echo "expected os-login 400 got $code"; exit 1; }
+echo "os-login empty rejected"
+
+# Credentials API (empty store is fine)
+curl -fsS "${AUTH[@]}" "$BASE/api/v1/credentials" >/tmp/rd-creds.json
+curl -fsS "${AUTH[@]}" -X POST "$BASE/api/v1/credentials/reload" | grep -q '"ok":true'
+echo "credentials ok"
+
+# Session info exposes os_login_status
+curl -fsS "${AUTH[@]}" "$BASE/api/v1/sessions/$SID" | grep -q 'os_login_status'
+echo "os_login_status field ok"
+
 curl -fsS -o /dev/null -w '' "${AUTH[@]}" -X DELETE "$BASE/api/v1/sessions/$SID"
 echo "disconnect ok"

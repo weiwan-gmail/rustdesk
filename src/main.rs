@@ -14,7 +14,13 @@ fn main() {
     ))]
     {
         let args: Vec<String> = std::env::args().skip(1).collect();
-        if args.first().map(|s| s.as_str()) == Some("--api-server") {
+        let is_api = args.first().map(|s| {
+            matches!(
+                s.as_str(),
+                "--api-server" | "--api-connect" | "--api-config" | "--headless-connect"
+            )
+        }) == Some(true);
+        if is_api {
             let _ = crate::core_main::core_main();
             common::global_clean();
             return;

@@ -1,0 +1,14 @@
+{
+  "bind": "127.0.0.1:21120",
+  "token": "secret",
+  "credentials_csv": "D:\\\\creds.csv",
+  "relay": false,
+  "os_login_delay_ms": 2500,
+  "auto_os_login": true,
+  "connect": {
+    "peer_id": "192.168.1.10",
+    "password": "rdpass",
+    "os_username": "Administrator",
+    "os_password": "WinPass123"
+  }
+}

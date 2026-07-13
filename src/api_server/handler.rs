@@ -42,6 +42,33 @@ impl SessionStatus {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum OsLoginStatus {
+    Idle,
+    Pending,
+    Running,
+    Done,
+    Failed,
+}
+
+impl Default for OsLoginStatus {
+    fn default() -> Self {
+        Self::Idle
+    }
+}
+
+impl OsLoginStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Idle => "idle",
+            Self::Pending => "pending",
+            Self::Running => "running",
+            Self::Done => "done",
+            Self::Failed => "failed",
+        }
+    }
+}
+
 #[derive(Clone, Default)]
 pub struct SessionState {
     pub session_id: String,
@@ -60,6 +87,8 @@ pub struct SessionState {
     pub current_display: i32,
     pub clipboard_text: String,
     pub permissions: HashMap<String, bool>,
+    pub os_login_status: OsLoginStatus,
+    pub os_login_error: String,
 }
 
 #[derive(Clone, Default)]

@@ -63,7 +63,19 @@ pub fn core_main() -> Option<Vec<String>> {
             ]
             .contains(&arg.as_str())
             {
-                _is_flutter_invoke_new_connection = true;
+                // Independent controller modes must never hand off to an existing GUI.
+                let independent = std::env::args().any(|a| {
+                    matches!(
+                        a.as_str(),
+                        "--api-server"
+                            | "--api-connect"
+                            | "--api-config"
+                            | "--headless-connect"
+                    )
+                });
+                if !independent {
+                    _is_flutter_invoke_new_connection = true;
+                }
             }
             if arg == "--elevate" {
                 _is_elevate = true;
@@ -716,39 +728,22 @@ pub fn core_main() -> Option<Vec<String>> {
                 crate::flutter::connection_manager::start_cm_no_ui();
             }
             return None;
-        } else if args[0] == "--api-server" {
+        } else if args[0] == "--api-server"
+            || args[0] == "--api-connect"
+            || args[0] == "--api-config"
+            || args[0] == "--headless-connect"
+        {
             #[cfg(feature = "api-server")]
             {
-                let mut bind = "127.0.0.1:21120".to_string();
-                let mut token = String::new();
-                let mut i = 1;
-                while i < args.len() {
-                    match args[i].as_str() {
-                        "--bind" => {
-                            if i + 1 < args.len() {
-                                bind = args[i + 1].clone();
-                                i += 2;
-                                continue;
-                            }
-                        }
-                        "--token" => {
-                            if i + 1 < args.len() {
-                                token = args[i + 1].clone();
-                                i += 2;
-                                continue;
-                            }
-                        }
-                        _ => {}
-                    }
-                    i += 1;
-                }
-                // Pure outbound controller; host --server is not started for this mode.
-                crate::api_server::run(bind, token);
+                // Independent outbound controller process: never activate existing GUI.
+                let opts = crate::api_server::launch_options_from_args(&args);
+                crate::api_server::run(opts);
             }
             #[cfg(not(feature = "api-server"))]
             {
                 eprintln!(
-                    "--api-server requires building with --features api-server"
+                    "{} requires building with --features api-server",
+                    args[0]
                 );
             }
             return None;

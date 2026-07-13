@@ -16,6 +16,7 @@ use tower_http::cors::{Any, CorsLayer};
 use super::auth::require_token;
 use super::clipboard::{self, ClipboardSetRequest};
 use super::input::{self, InputAction};
+use super::os_login::OsLoginParams;
 use super::session_mgr::{ConnectRequest, SessionInfo};
 use super::AppState;
 
@@ -41,6 +42,12 @@ pub fn router(state: Arc<AppState>) -> Router {
             get(get_clipboard).post(set_clipboard),
         )
         .route("/api/v1/sessions/:id/clipboard/copy", post(clipboard_copy))
+        .route("/api/v1/sessions/:id/os-login", post(os_login))
+        .route(
+            "/api/v1/credentials",
+            get(list_credentials),
+        )
+        .route("/api/v1/credentials/reload", post(reload_credentials))
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
             require_token,
@@ -282,3 +289,61 @@ async fn clipboard_copy(
     .map(Json)
     .map_err(|e| (StatusCode::BAD_REQUEST, e))
 }
+
+async fn os_login(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Json(params): Json<OsLoginParams>,
+) -> Result<Json<SessionInfo>, (StatusCode, String)> {
+    state
+        .sessions
+        .os_login(&id, params)
+        .map(Json)
+        .map_err(|e| {
+            let code = if e.contains("not found") {
+                StatusCode::NOT_FOUND
+            } else {
+                StatusCode::BAD_REQUEST
+            };
+            (code, e)
+        })
+}
+
+async fn list_credentials(
+    State(state): State<Arc<AppState>>,
+    Query(q): Query<CredQuery>,
+) -> Json<serde_json::Value> {
+    if let Some(peer) = q.peer_id.filter(|s| !s.is_empty()) {
+        let found = state.credentials.lookup(&peer, q.ip.as_deref());
+        if let Some(c) = found {
+            return Json(serde_json::json!({
+                "peer_id": c.peer_id,
+                "ip": c.ip,
+                "os_username": c.os_username,
+                "has_os_password": !c.os_password.is_empty(),
+                "has_rustdesk_password": !c.rustdesk_password.is_empty(),
+            }));
+        }
+        return Json(serde_json::json!({ "found": false }));
+    }
+    Json(serde_json::json!(state.credentials.list_public()))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CredQuery {
+    #[serde(default)]
+    pub peer_id: Option<String>,
+    #[serde(default)]
+    pub ip: Option<String>,
+}
+
+async fn reload_credentials(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    state
+        .credentials
+        .reload()
+        .map(|_| Json(serde_json::json!({ "ok": true })))
+        .map_err(|e| (StatusCode::BAD_REQUEST, e))
+}
+
