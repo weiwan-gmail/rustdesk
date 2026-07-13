@@ -21,7 +21,23 @@ fn main() {
             )
         }) == Some(true);
         if is_api {
-            let _ = crate::core_main::core_main();
+            // core_main returns None for headless API (blocks until exit).
+            // With --show-gui it returns Some after spawning the API thread so a
+            // Flutter/Sciter host can show UI. This flutter-feature binary stub
+            // has no UI host — keep the process alive on the API thread.
+            match crate::core_main::core_main() {
+                None => {}
+                Some(_) => {
+                    eprintln!(
+                        "note: --show-gui needs the Flutter/Sciter UI host; \
+                         this entry keeps the API server running without a window"
+                    );
+                    // API runs on a background thread; park until killed.
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_secs(3600));
+                    }
+                }
+            }
             common::global_clean();
             return;
         }

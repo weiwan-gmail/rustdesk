@@ -15,7 +15,30 @@ On Linux without vcpkg, you can also build with system codecs:
 cargo build --features "api-server,linux-pkg-config"
 ```
 
-GUI mode is unchanged when no API flags are passed. **`--api-server` / `--api-connect` / `--api-config` / `--headless-connect` always run as an independent process** and never hand off to or activate an existing RustDesk GUI window.
+GUI mode is unchanged when no API flags are passed. **`--api-server` / `--api-connect` / `--api-config` / `--headless-connect` always run as an independent process** and never hand off to or activate an *existing* RustDesk GUI window.
+
+### Show / hide local GUI (debug)
+
+By default the API process has **no** local GUI (`--no-gui`). For debugging you can show this process's own RustDesk window while the API keeps running:
+
+```bash
+# Headless (default)
+rustdesk --api-server --bind 127.0.0.1:21120
+
+# With local GUI (same process; API on background thread)
+rustdesk --api-server --show-gui --bind 127.0.0.1:21120 --token secret
+
+# Explicitly headless (overrides api-config show_gui)
+rustdesk --api-server --api-config rd-api.json --no-gui
+```
+
+Or in `--api-config`:
+
+```json
+{ "bind": "127.0.0.1:21120", "show_gui": true }
+```
+
+CLI `--show-gui` / `--no-gui` override the file. Remote sessions created via the HTTP API still use the headless handler; the local window is for inspecting ID/settings while you drive the API.
 
 Do **not** reuse the existing `--config` flag (custom-server license string) or `--import-config` (native Config TOML). Use **`--api-config`** for headless controller options.
 
@@ -127,6 +150,7 @@ JSON (default) or TOML (`.toml`). CLI flags override file fields.
 | `relay` | Force relay |
 | `os_login_delay_ms` | Delay after connect before typing |
 | `auto_os_login` | Auto-run OS login when creds present |
+| `show_gui` | Also open local RustDesk GUI (debug; default false) |
 | `connect` | If present, start oneshot connect (same as `--api-connect`) |
 | `connect.peer_id` / `password` / `os_username` / `os_password` | Oneshot peer + passwords |
 

@@ -126,6 +126,16 @@ pub fn launch_options_from_args(args: &[String]) -> ApiLaunchOptions {
                 cli.cli_auto_os = true;
                 i += 1;
             }
+            "--show-gui" => {
+                cli.show_gui = true;
+                cli.cli_show_gui = true;
+                i += 1;
+            }
+            "--no-gui" => {
+                cli.show_gui = false;
+                cli.cli_show_gui = true;
+                i += 1;
+            }
             "--api-connect" | "--headless-connect" => {
                 cli.oneshot_connect = true;
                 if i + 1 < args.len() && !args[i + 1].starts_with("--") {
@@ -180,6 +190,24 @@ mod launch_tests {
         assert_eq!(o.os_password.as_deref(), Some("secret"));
         assert_eq!(o.bind, "127.0.0.1:21199");
         assert_eq!(o.token, "tok");
+        assert!(!o.show_gui);
+    }
+
+    #[test]
+    fn parse_show_gui_flags() {
+        let with_gui = launch_options_from_args(&[
+            "--api-server".into(),
+            "--show-gui".into(),
+            "--bind".into(),
+            "127.0.0.1:1".into(),
+        ]);
+        assert!(with_gui.show_gui);
+        let no_gui = launch_options_from_args(&[
+            "--api-server".into(),
+            "--show-gui".into(),
+            "--no-gui".into(),
+        ]);
+        assert!(!no_gui.show_gui);
     }
 }
 

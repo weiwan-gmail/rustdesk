@@ -17,6 +17,9 @@ pub struct ApiConfigFile {
     pub os_login_delay_ms: Option<u64>,
     #[serde(default)]
     pub auto_os_login: Option<bool>,
+    /// When true, also start the normal RustDesk GUI (debug convenience).
+    #[serde(default)]
+    pub show_gui: Option<bool>,
     #[serde(default)]
     pub connect: Option<ApiConnectConfig>,
 }
@@ -53,12 +56,15 @@ pub struct ApiLaunchOptions {
     pub os_password: Option<String>,
     /// True when launched via --api-connect or config.connect
     pub oneshot_connect: bool,
+    /// Also show the normal RustDesk GUI (for debugging). Default false.
+    pub show_gui: bool,
     // Track which CLI fields were explicitly provided.
     pub cli_bind: bool,
     pub cli_token: bool,
     pub cli_delay: bool,
     pub cli_auto_os: bool,
     pub cli_relay: bool,
+    pub cli_show_gui: bool,
 }
 
 impl Default for ApiLaunchOptions {
@@ -81,11 +87,13 @@ impl ApiLaunchOptions {
             os_username: None,
             os_password: None,
             oneshot_connect: false,
+            show_gui: false,
             cli_bind: false,
             cli_token: false,
             cli_delay: false,
             cli_auto_os: false,
             cli_relay: false,
+            cli_show_gui: false,
         }
     }
 }
@@ -126,6 +134,9 @@ pub fn merge(file: Option<ApiConfigFile>, cli: ApiLaunchOptions) -> ApiLaunchOpt
         }
         if let Some(v) = f.auto_os_login {
             out.auto_os_login = v;
+        }
+        if let Some(v) = f.show_gui {
+            out.show_gui = v;
         }
         if let Some(c) = f.connect {
             out.oneshot_connect = true;
@@ -170,6 +181,9 @@ pub fn merge(file: Option<ApiConfigFile>, cli: ApiLaunchOptions) -> ApiLaunchOpt
     }
     if cli.cli_auto_os {
         out.auto_os_login = cli.auto_os_login;
+    }
+    if cli.cli_show_gui {
+        out.show_gui = cli.show_gui;
     }
     if cli.oneshot_connect {
         out.oneshot_connect = true;
@@ -218,6 +232,21 @@ mod tests {
     }
 
     #[test]
+    fn merge_show_gui_from_file_and_cli() {
+        let file = ApiConfigFile {
+            show_gui: Some(true),
+            ..Default::default()
+        };
+        let mut cli = ApiLaunchOptions::defaults();
+        let m = merge(Some(file.clone()), cli.clone());
+        assert!(m.show_gui);
+        cli.show_gui = false;
+        cli.cli_show_gui = true;
+        let m2 = merge(Some(file), cli);
+        assert!(!m2.show_gui);
+    }
+
+    #[test]
     fn load_toml_api_config() {
         let dir = std::env::temp_dir().join(format!("rd-api-toml-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
@@ -236,7 +265,10 @@ os_username = "Admin"
         .unwrap();
         let f = load_file(&path).unwrap();
         assert_eq!(f.bind.as_deref(), Some("127.0.0.1:9"));
-        assert_eq!(f.connect.as_ref().unwrap().peer_id.as_deref(), Some("10.0.0.1"));
+        assert_eq!(
+            f.connect.as_ref().unwrap().peer_id.as_deref(),
+            Some("10.0.0.1")
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
