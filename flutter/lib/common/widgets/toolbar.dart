@@ -163,6 +163,38 @@ handleOsPasswordAction(
   }
 }
 
+/// Open the remote text-input dialog, with Wayland keyboard consent if needed.
+void openInputRemoteText({required String id, required FFI ffi}) {
+  final sessionId = ffi.sessionId;
+  final pi = ffi.ffiModel.pi;
+  final isWaylandPeer = pi.platform == kPeerPlatformLinux && pi.isWayland;
+
+  Future<void> showDialog() async {
+    showInputRemoteTextDialog(
+      sessionId: sessionId,
+      dialogManager: ffi.dialogManager,
+    );
+  }
+
+  final allowWaylandKeyboard =
+      mainGetPeerBoolOptionSync(id, kPeerOptionAllowWaylandKeyboard);
+  if (shouldShowWaylandKeyboardPrompt(
+    connectionId: sessionId.toString(),
+    isWaylandPeer: isWaylandPeer,
+    allowWaylandKeyboardRemembered: allowWaylandKeyboard,
+  )) {
+    ffi.inputModel.keyboardInputAllowed = false;
+    showWaylandKeyboardInputWarningDialog(
+      id: id,
+      connectionId: sessionId.toString(),
+      ffi: ffi,
+      onEnable: showDialog,
+    );
+    return;
+  }
+  unawaited(showDialog());
+}
+
 void showWaylandKeyboardInputWarningDialog(
     {required String id,
     required String connectionId,
@@ -411,6 +443,14 @@ List<TTextMenu> toolbarControls(BuildContext context, String id, FFI ffi) {
           }
           await sendClipboardKeystrokes();
         }));
+  }
+  // input text (local dialog → remote keystroke injection)
+  if (isDefaultConn &&
+      !ffiModel.viewOnly &&
+      perms['keyboard'] != false) {
+    v.add(TTextMenu(
+        child: Text(translate('Input text')),
+        onPressed: () => openInputRemoteText(id: id, ffi: ffi)));
   }
   if (isDefaultConn &&
       isWaylandPeer &&

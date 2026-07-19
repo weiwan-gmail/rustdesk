@@ -586,6 +586,11 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
                                   icon: Icon(Icons.keyboard),
                                   onPressed: openKeyboard),
                               IconButton(
+                                  color: Colors.white,
+                                  icon: Icon(Icons.text_fields),
+                                  onPressed: () => openInputRemoteText(
+                                      id: widget.id, ffi: gFFI)),
+                              IconButton(
                                 color: Colors.white,
                                 icon: const Icon(Icons.build),
                                 onPressed: () => gFFI.dialogManager
@@ -597,6 +602,11 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
                                   color: Colors.white,
                                   icon: Icon(Icons.keyboard),
                                   onPressed: openKeyboard),
+                              IconButton(
+                                  color: Colors.white,
+                                  icon: Icon(Icons.text_fields),
+                                  onPressed: () => openInputRemoteText(
+                                      id: widget.id, ffi: gFFI)),
                               IconButton(
                                 color: Colors.white,
                                 icon: Icon(gFFI.ffiModel.touchMode
