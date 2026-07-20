@@ -1439,6 +1439,7 @@ void showInputRemoteTextDialog({
   required SessionID sessionId,
   required OverlayDialogManager dialogManager,
 }) {
+  // Compose locally, then inject via KeyEvent.seq on confirm.
   final controller = TextEditingController();
   dialogManager.show((setState, close, context) {
     submit() {
