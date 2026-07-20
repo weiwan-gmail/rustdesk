@@ -628,6 +628,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("cancel-bot-confirm-tip", "Biztosan le akarja mondani a Telegram botot?"),
         ("About RustDesk", "A RustDesk névjegye"),
         ("Send clipboard keystrokes", "Billentyűleütések küldése a vágólapra"),
+        ("Input text", ""),
         ("network_error_tip", "Ellenőrizze a hálózati kapcsolatot, majd próbálja meg újra."),
         ("Unlock with PIN", "Feloldás PIN-kóddal"),
         ("Requires at least {} characters", "Legalább {} karakter szükséges"),

@@ -628,6 +628,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("cancel-bot-confirm-tip", "Xác nhận tắt Bot?"),
         ("About RustDesk", "Về RustDesk"),
         ("Send clipboard keystrokes", "Gửi phím từ Clipboard"),
+        ("Input text", ""),
         ("network_error_tip", "Lỗi mạng, vui lòng kiểm tra lại."),
         ("Unlock with PIN", "Mở khóa bằng mã PIN"),
         ("Requires at least {} characters", "Yêu cầu ít nhất {} ký tự"),
