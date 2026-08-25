@@ -18,7 +18,6 @@ on:
       - master
       - develop
     paths-ignore:
-      - ".github/**"
       - "docs/**"
       - "README.md"
       - "res/**"
