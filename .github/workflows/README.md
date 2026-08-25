@@ -42,6 +42,10 @@ are validated too. Two things to remember:
    rely on the above trick, bundle the workflow edit with **some** real,
    non-`.github/**` change in the same push (there's no other way to force a
    push-triggered run without `workflow_dispatch` access — see Gotcha 4).
+3. Markdown docs under `.github/**` (like this file) are explicitly kept in
+   `paths-ignore` (`.github/**/*.md`) so pure documentation edits don't
+   trigger the full, expensive build matrix — only `.yml`/`.yaml` changes
+   under `.github/**` do.
 
 ## Gotcha 2: reusable workflow permissions can only be downgraded, never elevated
 

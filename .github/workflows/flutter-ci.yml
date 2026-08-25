@@ -6,6 +6,7 @@ on:
     paths-ignore:
     - "docs/**"
     - "README.md"
+    - ".github/**/*.md"
   push:
     branches:
       - master
@@ -13,6 +14,7 @@ on:
     paths-ignore:
       - "docs/**"
       - "README.md"
+      - ".github/**/*.md"
       - "res/**"
       - "appimage/**"
       - "flatpak/**"
