@@ -61,6 +61,10 @@
 * Do not make formatting-only changes.
 * Keep naming/style consistent with nearby code.
 
+## Git & PR Rules
+
+* For now, do **not** open PRs targeting `develop` for documentation-only changes (README, NOTES, `docs/`, code comments, FAQ, etc.). Commit them to a feature branch and push, but leave them unmerged / without a PR, unless the user explicitly asks otherwise. Code changes still go through PRs to `develop` as usual.
+
 ## Localization (`src/lang/*.rs`)
 
 Each file is a `HashMap<key, translation>`. Layout:
