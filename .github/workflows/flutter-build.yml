@@ -10,6 +10,13 @@ on:
         type: string
         default: "nightly"
 
+# Needed so the "Publish ... package"/"Publish Release" steps (softprops/action-gh-release)
+# can create/update releases. The calling workflow must grant at least this much too, since
+# a reusable workflow's GITHUB_TOKEN permissions can only be downgraded, never elevated,
+# relative to what the caller job allows.
+permissions:
+  contents: write
+
 # NOTE: F-Droid builder script 'flutter/build_fdroid.sh' reads environment
 # variables from this workflow!
 #

@@ -11,7 +11,6 @@ on:
       - master
       - develop
     paths-ignore:
-      - ".github/**"
       - "docs/**"
       - "README.md"
       - "res/**"
@@ -20,6 +19,8 @@ on:
 
 jobs:
   run-ci:
+    permissions:
+      contents: write
     uses: ./.github/workflows/flutter-build.yml
     with:
       # Publish downloadable builds (incl. Android APKs) on pushes to master/develop,
