@@ -628,7 +628,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("cancel-bot-confirm-tip", "Сигурни ли сте, че искате да отмените бота на Telegram?"),
         ("About RustDesk", "За RustDesk"),
         ("Send clipboard keystrokes", "Изпращане на клавишни натискания от клипборда"),
-        ("Input text", ""),
+        ("Input text", "Въвеждане на текст"),
         ("network_error_tip", "Моля, проверете мрежовата си връзка, след което натиснете повторен опит."),
         ("Unlock with PIN", "Отключване с PIN"),
         ("Requires at least {} characters", "Изисква поне {} знака"),
