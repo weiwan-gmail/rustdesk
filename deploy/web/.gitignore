@@ -1,0 +1,7 @@
+# build artifacts
+.build/
+dist/
+localserver/rustdesk-web
+localserver/rustdesk-web-*
+localserver/rustdesk-web.exe
+data/
