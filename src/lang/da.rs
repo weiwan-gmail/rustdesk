@@ -628,7 +628,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("cancel-bot-confirm-tip", "Er du sikker på at du vil afbryde Telegram robotten?"),
         ("About RustDesk", "Om RustDesk"),
         ("Send clipboard keystrokes", "Send udklipsholder tastetryk"),
-        ("Input text", ""),
+        ("Input text", "Indtast tekst"),
         ("network_error_tip", "Tjek venligst din internetforbindelse, og forsøg igen."),
         ("Unlock with PIN", "Lås op med PIN"),
         ("Requires at least {} characters", "Kræver mindst {} tegn"),

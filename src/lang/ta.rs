@@ -628,7 +628,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("cancel-bot-confirm-tip", "போட்_ரத்து_உறுதி_குறிப்பு"),
         ("About RustDesk", "RustDesk பற்றி"),
         ("Send clipboard keystrokes", "கிளிப்போர்டு விசைத்தள உள்ளீடு அனுப்பு"),
-        ("Input text", ""),
+        ("Input text", "உரையை உள்ளிடவும்"),
         ("network_error_tip", "நெட்வொர்க்_பிழை_குறிப்பு"),
         ("Unlock with PIN", "PIN உடன் திற"),
         ("Requires at least {} characters", "குறைந்தது {} எழுத்துகள் தேவை"),
