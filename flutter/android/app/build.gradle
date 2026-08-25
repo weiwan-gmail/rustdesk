@@ -96,8 +96,9 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId "com.carriez.flutter_hbb"
+        // Distinct from the official RustDesk app's applicationId so this
+        // manually-installed build can coexist on the same device.
+        applicationId "com.rustvibe.app"
         minSdkVersion 22
         targetSdkVersion 33
         versionCode flutterVersionCode.toInteger()
