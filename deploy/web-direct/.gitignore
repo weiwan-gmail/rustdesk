@@ -1,0 +1,5 @@
+# build artifacts
+.build/
+rustdesk-web-direct
+rustdesk-web-direct-*
+rustdesk-web-direct.exe
