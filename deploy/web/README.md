@@ -112,6 +112,10 @@ cd deploy/web/localserver
 
 本地构建依赖：node + npm、python3、yarn、protoc、Flutter 3.19.6（`FLUTTER_ROOT` 或 PATH）。`Dockerfile.web` 为一体化容器构建，无本地依赖。
 
+## 实施经验与踩坑
+
+本次落地过程中的非显而易见发现（v1/v2 架构、2026 工具链位腐烂、上游运行时 bug、hbbr loopback 行为、headless 测试与调试方法）都记录在 [NOTES.md](NOTES.md)。
+
 ## 已知限制
 
 - UI 停留在 v1.2.4 时代（v1 Web 客户端）；协议与现行服务端/被控端向后兼容。
