@@ -116,6 +116,22 @@ cd deploy/web/localserver
 
 本次落地过程中的非显而易见发现（v1/v2 架构、2026 工具链位腐烂、上游运行时 bug、hbbr loopback 行为、headless 测试与调试方法）都记录在 [NOTES.md](NOTES.md)。
 
+## 常见问题
+
+**Q：单机部署支持 Windows 吗？**
+
+支持。`rustdesk-web` 单二进制是纯 Go 标准库实现（无 CGO），`./build.sh --all` 会交叉编译出 `rustdesk-web.exe`（windows/amd64），拷到 Windows 机器上双击或命令行运行即可：`rustdesk-web.exe --server <服务器IP> --open`。注意**构建**仍需在 Linux/macOS（或 Windows 的 WSL/Git Bash）上进行，产出的是原生 Windows 可执行文件。若要在 Windows 上跑整套服务端，hbbs/hbbr 也有官方 Windows 构建（rustdesk-server-windows），与 `rustdesk-web.exe` 配合同机运行即可。
+
+**Q：单机部署可以不用中继（hbbr）吗？**
+
+不可以——**Web 客户端天生必须走中继**，这是浏览器的能力限制决定的：浏览器只能发起 WebSocket 连接，无法监听入站 TCP、无法用 UDP，也就无法做 NAT 打洞直连（P2P）。RustDesk 的直连路径依赖这些能力，所以浏览器端只能经 hbbr 中继收发数据。这不是部署上的取舍，而是协议本质。
+
+但请区分「中继组件」和「外部中继服务」：私有单机部署里 hbbs 和 hbbr **都跑在你自己这台机器上**（compose 里是两个容器，本机二进制则连你已有的 hbbs/hbbr），不依赖任何官方/外部中继。换句话说，流量全程不出你的机器，只是逻辑上必须经过 hbbr 这一跳。如果一定要浏览器端 P2P，唯一的理论出路是 WebRTC DataChannel，但 v1 Web 客户端未实现（RustDesk 的 WebRTC 也是另一套可选特性），不在本方案范围内。
+
+**Q：被控端需要专门装什么吗？**
+
+不需要。被控端就是普通的 RustDesk 桌面/移动客户端，在「设置 → 网络 → ID/中继服务器」里填你的服务器地址和 Key 即可。Web 客户端只能当主控（控制别人），不能被控。
+
 ## 已知限制
 
 - UI 停留在 v1.2.4 时代（v1 Web 客户端）；协议与现行服务端/被控端向后兼容。
