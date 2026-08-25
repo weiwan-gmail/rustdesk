@@ -10,15 +10,14 @@ package main
 // the bridge adds/parses that framing; it never touches the protobuf payload.
 
 import (
-	"log"
-	"os"
 	"errors"
 	"io"
 	"net"
 	"sync"
 )
 
-const maxRDFrame = 64 * 1024 * 1024
+// Cap one RustDesk frame; see maxFramePayload in websocket.go.
+const maxRDFrame = maxFramePayload
 
 // writeRDFrame writes one payload with the RustDesk length header.
 func writeRDFrame(w io.Writer, payload []byte) error {
@@ -103,19 +102,10 @@ func bridge(ws *wsConn, tcp net.Conn) {
 	// controlled -> browser: parse RustDesk frame -> one WS binary frame
 	go func() {
 		defer wg.Done()
-		debug := os.Getenv("RWD_DEBUG") != ""
-		n := 0
 		for {
 			payload, err := readRDFrame(tcp)
 			if err != nil {
-				if debug {
-					log.Printf("bridge tcp->ws read end after %d frames: %v", n, err)
-				}
 				break
-			}
-			n++
-			if debug && n <= 20 {
-				log.Printf("bridge tcp->ws frame #%d: %d bytes", n, len(payload))
 			}
 			if err := ws.writeFrame(opBinary, payload); err != nil {
 				break

@@ -16,6 +16,8 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
+	"sync"
 )
 
 const (
@@ -29,11 +31,21 @@ const (
 
 const wsGUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
+// maxFramePayload caps a single WS/RustDesk frame. Video frames (VP9) are
+// typically well under 1 MiB even for keyframes; 8 MiB is generous headroom
+// while blocking untrusted 64 MiB allocations.
+const maxFramePayload = 8 * 1024 * 1024
+
 // wsConn is a hijacked connection with buffered IO for frame parsing.
+// wmu serializes frame writes: the bridge's two goroutines (and the pong
+// reply inside readFrame) can all write concurrently, and bufio.Writer is
+// not safe for that.
 type wsConn struct {
 	net.Conn
-	r *bufio.Reader
-	w *bufio.Writer
+	r    *bufio.Reader
+	w    *bufio.Writer
+	wmu  sync.Mutex
+	werr error
 }
 
 func wsAcceptKey(key string) string {
@@ -81,6 +93,16 @@ func trimSpace(s string) string {
 	return s[start:end]
 }
 
+// originMatchesHost reports whether the Origin header's host equals the
+// request's Host header (same-origin page we served).
+func originMatchesHost(origin, host string) bool {
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	return equalFoldASCII(u.Host, host)
+}
+
 func equalFoldASCII(a, b string) bool {
 	for i := 0; i < len(a); i++ {
 		ca, cb := a[i], b[i]
@@ -107,6 +129,15 @@ func acceptWS(w http.ResponseWriter, r *http.Request) (*wsConn, error) {
 	key := r.Header.Get("Sec-WebSocket-Key")
 	if key == "" {
 		return nil, errors.New("missing Sec-WebSocket-Key")
+	}
+	// Cross-origin WebSocket requests (a malicious page driving a victim's
+	// browser against a locally-running bridge) always carry an Origin header;
+	// require it to be same-origin with the page we served. Non-browser clients
+	// (no Origin) are unaffected.
+	if origin := r.Header.Get("Origin"); origin != "" {
+		if !originMatchesHost(origin, r.Host) {
+			return nil, fmt.Errorf("cross-origin websocket rejected (origin %q, host %q)", origin, r.Host)
+		}
 	}
 	hj, ok := w.(http.Hijacker)
 	if !ok {
@@ -179,7 +210,7 @@ func (c *wsConn) readRawFrame() (fin bool, opcode byte, payload []byte, err erro
 		}
 		length = binary.BigEndian.Uint64(b[:])
 	}
-	if length > 64*1024*1024 {
+	if length > maxFramePayload {
 		err = errors.New("frame too large")
 		return
 	}
@@ -202,7 +233,21 @@ func (c *wsConn) readRawFrame() (fin bool, opcode byte, payload []byte, err erro
 }
 
 // writeFrame sends a single unmasked, unfragmented frame (server→client).
+// Safe for concurrent goroutines; the first write error is sticky.
 func (c *wsConn) writeFrame(opcode byte, payload []byte) error {
+	c.wmu.Lock()
+	defer c.wmu.Unlock()
+	if c.werr != nil {
+		return c.werr
+	}
+	if err := c.writeFrameLocked(opcode, payload); err != nil {
+		c.werr = err
+		return err
+	}
+	return nil
+}
+
+func (c *wsConn) writeFrameLocked(opcode byte, payload []byte) error {
 	header := []byte{0x80 | opcode}
 	n := len(payload)
 	switch {

@@ -41,6 +41,10 @@ var (
 
 var allowedNets []*net.IPNet
 
+// bridgeSem bounds concurrent /direct bridges so unauthenticated sessions
+// can't exhaust memory/goroutines.
+var bridgeSem = make(chan struct{}, 32)
+
 func main() {
 	flag.Parse()
 	var err error
@@ -92,6 +96,13 @@ func handleDirect(w http.ResponseWriter, r *http.Request) {
 	addr, err := validateTarget(target)
 	if err != nil {
 		http.Error(w, "invalid target: "+err.Error(), http.StatusForbidden)
+		return
+	}
+	select {
+	case bridgeSem <- struct{}{}:
+		defer func() { <-bridgeSem }()
+	default:
+		http.Error(w, "too many connections", http.StatusServiceUnavailable)
 		return
 	}
 	ws, err := acceptWS(w, r)
