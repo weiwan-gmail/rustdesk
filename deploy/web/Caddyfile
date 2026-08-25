@@ -1,0 +1,29 @@
+# RustDesk web client site.
+#
+# SITE_ADDRESS examples:
+#   http://:80              plain HTTP on port 80 (intranet, no certificate)
+#   http://192.168.1.10     plain HTTP, bound to that address
+#   rustdesk.example.com    automatic HTTPS (needs ports 80+443 reachable)
+{$SITE_ADDRESS:http://:80} {
+	root * /srv
+	encode zstd gzip
+
+	# WebSocket endpoints for the web client (same layout as the official
+	# reverse-proxy docs, so external gateways can reuse the rules).
+	handle /ws/id* {
+		reverse_proxy {$HBBS_HOST:hbbs}:{$HBBS_PORT:21118} {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	handle /ws/relay* {
+		reverse_proxy {$HBBR_HOST:hbbr}:{$HBBR_PORT:21119} {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+}

@@ -1,0 +1,59 @@
+# One-command private RustDesk deployment with the web client:
+#   cp .env.example .env   # edit as needed
+#   docker compose up -d
+#
+# hbbs/hbbr WebSocket ports 21118/21119 are intentionally NOT published to the
+# host: browsers reach them only through the web service (Caddy), which sets
+# X-Real-IP itself. Publishing them would let anyone spoof client IPs.
+services:
+  hbbs:
+    image: rustdesk/rustdesk-server:latest
+    # RELAY_SERVER (see .env) is the address native clients use to reach hbbr.
+    command: hbbs ${RELAY_SERVER:+-r }${RELAY_SERVER}
+    volumes:
+      - ./data:/root
+    networks:
+      - rustdesk
+    ports:
+      - "21115:21115"     # NAT type test
+      - "21116:21116"     # ID registration / heartbeat (TCP)
+      - "21116:21116/udp" # ID registration / heartbeat (UDP)
+    restart: unless-stopped
+
+  hbbr:
+    image: rustdesk/rustdesk-server:latest
+    command: hbbr
+    volumes:
+      - ./data:/root
+    networks:
+      - rustdesk
+    ports:
+      - "21117:21117"     # relay for native clients
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        BASE_HREF: ${BASE_HREF:-/}
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-http://:80}
+      HBBS_HOST: hbbs
+      HBBR_HOST: hbbr
+      RUSTDESK_SERVER: ${RUSTDESK_SERVER:-}
+    networks:
+      - rustdesk
+    ports:
+      - "${WEB_PORT:-8080}:80"
+      # For automatic HTTPS with a domain (SITE_ADDRESS=rustdesk.example.com),
+      # publish 80 and 443 instead:
+      # - "80:80"
+      # - "443:443"
+    depends_on:
+      - hbbs
+      - hbbr
+    restart: unless-stopped
+
+networks:
+  rustdesk:

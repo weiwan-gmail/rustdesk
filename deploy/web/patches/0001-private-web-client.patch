@@ -1,0 +1,379 @@
+diff --git a/flutter/lib/web/bridge.dart b/flutter/lib/web/bridge.dart
+index 540867ec9..73c67a0ce 100644
+--- a/flutter/lib/web/bridge.dart
++++ b/flutter/lib/web/bridge.dart
+@@ -51,7 +51,8 @@ class RustdeskImpl {
+ 
+   Future<void> hostStopSystemKeyPropagate(
+       {required bool stopped, dynamic hint}) {
+-    throw UnimplementedError();
++    // No system key propagate on web.
++    return Future(() {});
+   }
+ 
+   int peerGetDefaultSessionsCount({required String id, dynamic hint}) {
+@@ -156,12 +157,14 @@ class RustdeskImpl {
+       required int width,
+       required int height,
+       dynamic hint}) {
+-    throw UnimplementedError();
++    // Recording is not supported on web.
++    return Future(() {});
+   }
+ 
+   Future<void> sessionRecordStatus(
+       {required UuidValue sessionId, required bool status, dynamic hint}) {
+-    throw UnimplementedError();
++    // Recording is not supported on web.
++    return Future(() {});
+   }
+ 
+   Future<void> sessionReconnect(
+@@ -397,13 +400,13 @@ class RustdeskImpl {
+       required int lockModes,
+       required bool downOrUp,
+       dynamic hint}) {
+-    // TODO: map mode
+-    throw UnimplementedError();
++    // TODO: map mode; web uses the legacy keyboard mode (sessionInputKey).
++    return Future(() {});
+   }
+ 
+   void sessionEnterOrLeave(
+       {required UuidValue sessionId, required bool enter, dynamic hint}) {
+-    throw UnimplementedError();
++    // The js side tracks mouse enter/leave itself.
+   }
+ 
+   Future<void> sessionInputKey(
+@@ -446,7 +449,7 @@ class RustdeskImpl {
+       required String name,
+       required String value,
+       dynamic hint}) {
+-    return Future(() => js.context.callMethod('SetByName', [
++    return Future(() => js.context.callMethod('setByName', [
+           'option:session',
+           jsonEncode({'name': name, 'value': value})
+         ]));
+@@ -594,7 +597,8 @@ class RustdeskImpl {
+ 
+   Future<void> sessionSwitchSides(
+       {required UuidValue sessionId, dynamic hint}) {
+-    throw UnimplementedError();
++    // Switching sides is not supported on web.
++    return Future(() {});
+   }
+ 
+   Future<void> sessionChangeResolution(
+@@ -604,7 +608,8 @@ class RustdeskImpl {
+       required int height,
+       dynamic hint}) {
+     // note: restore on disconnected
+-    throw UnimplementedError();
++    // Changing resolution is not supported on web.
++    return Future(() {});
+   }
+ 
+   Future<void> sessionSetSize(
+@@ -650,7 +655,8 @@ class RustdeskImpl {
+   }
+ 
+   Future<String> mainGetError({dynamic hint}) {
+-    throw UnimplementedError();
++    return Future(
++        () => js.context.callMethod('getByName', ['error']) ?? '');
+   }
+ 
+   bool mainShowOption({required String key, dynamic hint}) {
+@@ -699,15 +705,16 @@ class RustdeskImpl {
+   }
+ 
+   Future<String> mainGetAppName({dynamic hint}) {
+-    throw UnimplementedError();
++    return Future(() => js.context.callMethod('getByName', ['app_name']));
+   }
+ 
+   String mainGetAppNameSync({dynamic hint}) {
+-    throw UnimplementedError();
++    return js.context.callMethod('getByName', ['app_name']);
+   }
+ 
+   String mainUriPrefixSync({dynamic hint}) {
+-    throw UnimplementedError();
++    // No uri prefix on web.
++    return '';
+   }
+ 
+   Future<String> mainGetLicense({dynamic hint}) {
+@@ -760,7 +767,8 @@ class RustdeskImpl {
+   }
+ 
+   Future<void> mainDiscover({dynamic hint}) {
+-    throw UnimplementedError();
++    // No LAN discovery on web.
++    return Future(() {});
+   }
+ 
+   Future<String> mainGetApiServer({dynamic hint}) {
+@@ -928,11 +936,13 @@ class RustdeskImpl {
+   }
+ 
+   Future<void> mainLoadLanPeers({dynamic hint}) {
+-    throw UnimplementedError();
++    // No LAN discovery on web.
++    return Future(() {});
+   }
+ 
+   Future<void> mainRemoveDiscovered({required String id, dynamic hint}) {
+-    throw UnimplementedError();
++    // No LAN discovery on web.
++    return Future(() {});
+   }
+ 
+   Future<void> mainChangeTheme({required String dark, dynamic hint}) {
+@@ -995,12 +1005,14 @@ class RustdeskImpl {
+ 
+   Future<void> sessionRequestVoiceCall(
+       {required UuidValue sessionId, dynamic hint}) {
+-    throw UnimplementedError();
++    // Voice call is not supported on web.
++    return Future(() {});
+   }
+ 
+   Future<void> sessionCloseVoiceCall(
+       {required UuidValue sessionId, dynamic hint}) {
+-    throw UnimplementedError();
++    // Voice call is not supported on web.
++    return Future(() {});
+   }
+ 
+   Future<void> cmHandleIncomingVoiceCall(
+@@ -1121,7 +1133,8 @@ class RustdeskImpl {
+ 
+   Future<void> sessionSendPointer(
+       {required UuidValue sessionId, required String msg, dynamic hint}) {
+-    throw UnimplementedError();
++    // Trackpad gestures are not supported on web yet.
++    return Future(() {});
+   }
+ 
+   Future<void> sessionSendMouse(
+@@ -1167,8 +1180,8 @@ class RustdeskImpl {
+       required int index,
+       required bool on,
+       dynamic hint}) {
+-    // TODO
+-    throw UnimplementedError();
++    // Virtual display is not supported on web.
++    return Future(() {});
+   }
+ 
+   Future<void> mainSetHomeDir({required String home, dynamic hint}) {
+@@ -1546,7 +1559,8 @@ class RustdeskImpl {
+   }
+ 
+   Future<void> pluginSyncUi({required String syncTo, dynamic hint}) {
+-    throw UnimplementedError();
++    // No plugins on web.
++    return Future(() {});
+   }
+ 
+   Future<void> pluginListReload({dynamic hint}) {
+@@ -1602,7 +1616,8 @@ class RustdeskImpl {
+ 
+   Future<void> sessionRequestNewDisplayInitMsgs(
+       {required UuidValue sessionId, required int display, dynamic hint}) {
+-    throw UnimplementedError();
++    // Not supported on web.
++    return Future(() {});
+   }
+ 
+   Future<String> mainHandleWaylandScreencastRestoreToken(
+@@ -1611,7 +1626,8 @@ class RustdeskImpl {
+   }
+ 
+   bool mainIsOptionFixed({required String key, dynamic hint}) {
+-    throw UnimplementedError();
++    // No hard-coded settings on web.
++    return false;
+   }
+ 
+   void dispose() {}
+diff --git a/flutter/web/config.js b/flutter/web/config.js
+new file mode 100644
+index 000000000..dead0acfe
+--- /dev/null
++++ b/flutter/web/config.js
+@@ -0,0 +1,18 @@
++// Runtime configuration for the RustDesk web client.
++// This file is served next to index.html and read before the app starts.
++//
++// server: default RustDesk server written into the client on first load.
++//   ""                 -> same origin: the page is served by rustdesk-web or
++//                         the bundled Caddy, which proxy /ws/id and /ws/relay.
++//   "host"             -> domain: ws(s)://host/ws/id (reverse proxy on 80/443)
++//   "1.2.3.4"          -> IP: ws(s)://1.2.3.4:21118 / :21119
++//   "host:21116"       -> explicit port: ws(s)://host:21118 / :21119
++// Users can always override the server in the client settings page.
++//
++// wsIdPath / wsRelayPath: WS endpoint paths used for the domain / same-origin
++// cases above. Change only if your gateway maps different paths.
++window.RUSTDESK_CONFIG = {
++  server: "",
++  wsIdPath: "/ws/id",
++  wsRelayPath: "/ws/relay",
++};
+diff --git a/flutter/web/index.html b/flutter/web/index.html
+index b466df662..5f1230b05 100644
+--- a/flutter/web/index.html
++++ b/flutter/web/index.html
+@@ -32,6 +32,8 @@
+ 
+   <title>RustDesk</title>
+   <link rel="manifest" href="manifest.json">
++  <!-- Deployment-time configuration (optional), sets window.RUSTDESK_CONFIG -->
++  <script src="config.js"></script>
+   <script src="ogvjs-1.8.6/ogv.js"></script>
+   <script type="module" crossorigin src="js/dist/index.js"></script>
+   <link rel="modulepreload" href="js/dist/vendor.js">
+diff --git a/flutter/web/js/package.json b/flutter/web/js/package.json
+index 436806e8d..37ea70172 100644
+--- a/flutter/web/js/package.json
++++ b/flutter/web/js/package.json
+@@ -12,11 +12,14 @@
+   },
+   "dependencies": {
+     "fast-sha256": "^1.3.0",
+-    "libsodium": "^0.7.9",
+-    "libsodium-wrappers": "^0.7.9",
++    "libsodium": "0.7.13",
++    "libsodium-wrappers": "0.7.13",
+     "pcm-player": "^0.0.11",
+     "ts-proto": "^1.169.1",
+     "wasm-feature-detect": "^1.2.11",
+     "zstddec": "^0.0.2"
++  },
++  "resolutions": {
++    "**/@types/node": "^16.18.0"
+   }
+ }
+diff --git a/flutter/web/js/src/connection.ts b/flutter/web/js/src/connection.ts
+index 297004bd8..5a4881f10 100644
+--- a/flutter/web/js/src/connection.ts
++++ b/flutter/web/js/src/connection.ts
+@@ -8,13 +8,13 @@ import * as consts from "./consts";
+ import { decompress, mapKey, sleep } from "./common";
+ 
+ export const PORT = 21116;
+-const HOSTS = [
+-  "rs-sg.rustdesk.com",
+-  "rs-cn.rustdesk.com",
+-  "rs-us.rustdesk.com",
+-];
+-let HOST = localStorage.getItem("rendezvous-server") || HOSTS[0];
+-const SCHEMA = "ws://";
++// Deployment-time configuration, served as config.js next to index.html.
++// window.RUSTDESK_CONFIG = { server: "host[:port]", wsIdPath: "/ws/id", wsRelayPath: "/ws/relay" }
++const CONF: any = (window as any).RUSTDESK_CONFIG || {};
++
++function wsSchema(): string {
++  return location.protocol === "https:" ? "wss://" : "ws://";
++}
+ 
+ type MsgboxCallback = (type: string, title: string, text: string, link: string) => void;
+ type DrawCallback = (display: number, data: Uint8Array) => void;
+@@ -1003,40 +1003,42 @@ export default class Connection {
+   }
+ }
+ 
+-function testDelay() {
+-  var nearest = "";
+-  HOSTS.forEach((host) => {
+-    const now = new Date().getTime();
+-    new Websock(getrUriFromRs(host), true).open().then(() => {
+-      console.log("latency of " + host + ": " + (new Date().getTime() - now));
+-      if (!nearest) {
+-        HOST = host;
+-        localStorage.setItem("rendezvous-server", host);
+-      }
+-    });
+-  });
+-}
+-
+-testDelay();
+-
+ function getDefaultUri(isRelay: Boolean = false): string {
+   const host = localStorage.getItem("custom-rendezvous-server");
+-  return getrUriFromRs(host || HOST, isRelay);
++  return getrUriFromRs(host || CONF.server || "", isRelay);
+ }
+ 
++// Server address resolution, mirroring check_ws() of the native client
++// (libs/hbb_common/src/websocket.rs):
++//   ""               -> same origin, path based (the page is served by a
++//                       WS-capable proxy: rustdesk-web binary or Caddy)
++//   domain           -> ws(s)://domain/ws/id | /ws/relay (reverse proxy on 80/443)
++//   domain:port      -> ws(s)://domain:(port+2 | +3) (direct WS ports)
++//   ip[:port]        -> ws(s)://ip:(port+2 | +3)
+ function getrUriFromRs(
+   uri: string,
+   isRelay: Boolean = false,
+   roffset: number = 0
+ ): string {
+-  if (uri.indexOf(":") > 0) {
+-    const tmp = uri.split(":");
+-    const port = parseInt(tmp[1]);
+-    uri = tmp[0] + ":" + (port + (isRelay ? roffset || 3 : 2));
+-  } else {
+-    uri += ":" + (PORT + (isRelay ? 3 : 2));
++  const wsPath = isRelay
++    ? CONF.wsRelayPath || "/ws/relay"
++    : CONF.wsIdPath || "/ws/id";
++  if (!uri) {
++    return wsSchema() + location.host + wsPath;
++  }
++  let host = uri;
++  let port = 0;
++  const i = uri.lastIndexOf(":");
++  if (i > 0 && uri.indexOf(":") == i) {
++    host = uri.substring(0, i);
++    port = parseInt(uri.substring(i + 1)) || 0;
++  }
++  const isIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(host) || host.indexOf(":") >= 0;
++  if (!isIp && !port) {
++    return wsSchema() + host + wsPath;
+   }
+-  return SCHEMA + uri;
++  const base = port || PORT;
++  return wsSchema() + host + ":" + (base + (isRelay ? roffset || 3 : 2));
+ }
+ 
+ function hash(datas: (string | Uint8Array)[]): Uint8Array {
+diff --git a/flutter/web/js/src/globals.js b/flutter/web/js/src/globals.js
+index 5c2823dbc..21a30b1dd 100644
+--- a/flutter/web/js/src/globals.js
++++ b/flutter/web/js/src/globals.js
+@@ -400,6 +400,8 @@ function _getByName(name, arg) {
+       }
+     case 'test_if_valid_server':
+       break;
++    case 'app_name':
++      return ((window.RUSTDESK_CONFIG || {}).appName) || 'RustDesk';
+     case 'version':
+       return version;
+     case 'load_recent_peers':
+diff --git a/flutter/web/yuv.js b/flutter/web/yuv.js
+index 35feb485e..45d7ef0e7 100644
+--- a/flutter/web/yuv.js
++++ b/flutter/web/yuv.js
+@@ -64,7 +64,9 @@ self.addEventListener('message', (e) => {
+ 
+ function run() {
+   if (currentFrame) {
+-    self.postMessage(I420ToARGB(currentFrame));
++    // currentFrame is {display, frame}; the main thread expects
++    // onRgba(e.data.display, e.data.frame) where frame is the rgba bytes.
++    self.postMessage({ display: currentFrame.display, frame: I420ToARGB(currentFrame.frame) });
+     currentFrame = undefined;
+   }
+   setTimeout(run, 1);

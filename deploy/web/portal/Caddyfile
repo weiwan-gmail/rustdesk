@@ -1,0 +1,32 @@
+# Portal mode: mount the web client under a sub-path of an existing
+# centralized gateway (Caddy). Build the web image with BASE_HREF=/rustdesk/
+# first (see .env.example).
+#
+# Two variants for the /ws/* upstreams:
+#   A) proxy to the web service container (which forwards to hbbs/hbbr)
+#      -> only the web service address is needed here
+#   B) proxy directly to hbbs:21118 / hbbr:21119 (one hop less, matches the
+#      official reverse-proxy docs)
+# Variant B is shown.
+
+portal.example.com {
+	# ... existing portal routes ...
+
+	# RustDesk web client static pages
+	handle_path /rustdesk/* {
+		reverse_proxy rustdesk-web:80
+	}
+
+	# WebSocket endpoints (keep the official /ws/id, /ws/relay layout)
+	handle /ws/id* {
+		reverse_proxy hbbs:21118 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	handle /ws/relay* {
+		reverse_proxy hbbr:21119 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+}
