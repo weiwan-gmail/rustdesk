@@ -9,6 +9,18 @@ on:
       upload-tag:
         type: string
         default: "nightly"
+      # When false (PR / push to develop|master via flutter-ci.yml), only the
+      # common packages are built; everything else is skipped via `if:`.
+      # Nightly and tag workflows leave this at the default (true).
+      #
+      # Common packages:
+      #   - Windows x64 (Flutter)
+      #   - Linux amd64 / aarch64 (Flutter deb+rpm)
+      #   - macOS arm64
+      #   - Android arm64
+      full-build:
+        type: boolean
+        default: true
 
 # Needed so the "Publish ... package"/"Publish Release" steps (softprops/action-gh-release)
 # can create/update releases. The calling workflow must grant at least this much too, since
@@ -60,8 +72,79 @@ env:
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}-2"
 
 jobs:
+  # Job-level `if:` cannot use the `matrix` context, so mixed-arch jobs
+  # (Windows / macOS / Android) take their matrix from here instead.
+  # `full-build: false` keeps only the common packages; nightly/tag leave
+  # the default true and get the full lists.
+  select-build-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      windows-flutter: ${{ steps.set.outputs.windows-flutter }}
+      macos: ${{ steps.set.outputs.macos }}
+      android: ${{ steps.set.outputs.android }}
+    steps:
+      - id: set
+        env:
+          FULL_BUILD: ${{ inputs.full-build }}
+        run: |
+          python3 <<'PY'
+          import json, os
+
+          full = os.environ["FULL_BUILD"].lower() == "true"
+          windows = [
+              {
+                  "target": "x86_64-pc-windows-msvc",
+                  "os": "windows-2022",
+                  "arch": "x86_64",
+                  "flutter-arch": "x64",
+                  "vcpkg-triplet": "x64-windows-static",
+                  "build-args": "--vram",
+              },
+              {
+                  "target": "aarch64-pc-windows-msvc",
+                  "os": "windows-11-arm",
+                  "arch": "aarch64",
+                  "flutter-arch": "arm64",
+                  "vcpkg-triplet": "arm64-windows-static",
+                  # vram is x86/x64-only; no NV/Intel/AMD hardware on WoA.
+                  "build-args": "",
+              },
+          ]
+          macos = [
+              {
+                  "target": "x86_64-apple-darwin",
+                  "os": "macos-15-intel",
+                  "extra-build-args": "",
+                  "arch": "x86_64",
+                  "vcpkg-triplet": "x64-osx",
+              },
+              {
+                  "target": "aarch64-apple-darwin",
+                  "os": "macos-14",
+                  "extra-build-args": "--screencapturekit",
+                  "arch": "aarch64",
+                  "vcpkg-triplet": "arm64-osx",
+              },
+          ]
+          android = [
+              {"arch": "aarch64", "target": "aarch64-linux-android", "os": "ubuntu-24.04", "reltype": "release", "suffix": ""},
+              {"arch": "armv7", "target": "armv7-linux-androideabi", "os": "ubuntu-24.04", "reltype": "release", "suffix": ""},
+              {"arch": "x86_64", "target": "x86_64-linux-android", "os": "ubuntu-24.04", "reltype": "release", "suffix": ""},
+          ]
+
+          def emit(name, rows):
+              with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+                  fh.write(f"{name}<<EOF\n{json.dumps(rows)}\nEOF\n")
+
+          emit("windows-flutter", windows if full else [j for j in windows if j["arch"] == "x86_64"])
+          emit("macos", macos if full else [j for j in macos if j["arch"] == "aarch64"])
+          emit("android", android if full else [j for j in android if j["arch"] == "aarch64"])
+          PY
+
   generate-bridge:
     uses: ./.github/workflows/bridge.yml
+    with:
+      full-build: ${{ inputs.full-build }}
 
   build-RustDeskTempTopMostWindow:
     uses: ./.github/workflows/third-party-RustDeskTempTopMostWindow.yml
@@ -83,35 +166,20 @@ jobs:
       configuration: Release
       platform: ${{ matrix.job.platform }}
       target_version: Windows10
+      # Windows ARM64 overlay is only needed by the Windows ARM64 Flutter job.
+      # Pass via `enabled` rather than job-level `if` + matrix: reusable workflow
+      # jobs may not evaluate the caller's matrix context in `if`.
+      enabled: ${{ inputs.full-build || matrix.job.platform == 'x64' }}
 
   build-for-windows-flutter:
     name: ${{ matrix.job.target }}
-    needs: [build-RustDeskTempTopMostWindow, generate-bridge]
+    needs: [select-build-matrix, build-RustDeskTempTopMostWindow, generate-bridge]
     runs-on: ${{ matrix.job.os }}
     strategy:
       fail-fast: false
       matrix:
-        job:
-          # - { target: i686-pc-windows-msvc        , os: windows-2022                  }
-          # - { target: x86_64-pc-windows-gnu       , os: windows-2022                  }
-          - {
-              target: x86_64-pc-windows-msvc,
-              os: windows-2022,
-              arch: x86_64,
-              flutter-arch: x64,
-              vcpkg-triplet: x64-windows-static,
-              build-args: "--vram",
-            }
-          - {
-              target: aarch64-pc-windows-msvc,
-              os: windows-11-arm,
-              arch: aarch64,
-              flutter-arch: arm64,
-              vcpkg-triplet: arm64-windows-static,
-              # vram is x86/x64-only (NVENC needs CUDA, Intel MediaSDK needs __rdtsc);
-              # no NV/Intel/AMD hardware exists on Windows-on-ARM, so vram stays disabled here.
-              build-args: "",
-            }
+        # Slim CI (full-build=false): x86_64 only. Full CI also includes ARM64.
+        job: ${{ fromJSON(needs.select-build-matrix.outputs.windows-flutter) }}
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6
@@ -388,6 +456,8 @@ jobs:
     runs-on: ${{ matrix.job.os }}
     # Temporarily disable this action due to additional test is needed.
     # if: false
+    # 32-bit Sciter fallback; skipped on PR / develop slim CI.
+    if: ${{ inputs.full-build }}
     strategy:
       fail-fast: false
       matrix:
@@ -535,7 +605,7 @@ jobs:
             ./SignOutput/rustdesk-*.exe
 
   build-rustdesk-ios:
-    if: ${{ inputs.upload-artifact }}
+    if: ${{ inputs.full-build && inputs.upload-artifact }}
     name: build rustdesk ios ipa
     runs-on: ${{ matrix.job.os }}
     needs: [generate-bridge]
@@ -657,26 +727,12 @@ jobs:
   build-for-macOS:
     name: ${{ matrix.job.target }}
     runs-on: ${{ matrix.job.os }}
-    needs: [generate-bridge]
+    needs: [select-build-matrix, generate-bridge]
     strategy:
       fail-fast: false
       matrix:
-        job:
-          - {
-              target: x86_64-apple-darwin,
-              os: macos-15-intel, #macos-latest or macos-14 use M1 now, https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#:~:text=14%20GB-,macos%2Dlatest%20or%20macos%2D14,-The%20macos%2Dlatestlabel
-              extra-build-args: "",
-              arch: x86_64,
-              vcpkg-triplet: x64-osx,
-            }
-          - {
-              target: aarch64-apple-darwin,
-              os: macos-14,
-              # extra-build-args: "--disable-flutter-texture-render", # disable this for mac, because we see a lot of users reporting flickering both on arm and x64, and we can not confirm if texture rendering has better performance if htere is no vram, https://github.com/rustdesk/rustdesk/issues/6296
-              extra-build-args: "--screencapturekit",
-              arch: aarch64,
-              vcpkg-triplet: arm64-osx,
-            }
+        # Slim CI (full-build=false): aarch64 only. Full CI also includes Intel x86_64.
+        job: ${{ fromJSON(needs.select-build-matrix.outputs.macos) }}
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6
@@ -878,7 +934,7 @@ jobs:
       - build-for-windows-flutter
       - build-for-windows-sciter
     runs-on: ubuntu-latest
-    if: ${{ inputs.upload-artifact }}
+    if: ${{ inputs.full-build && inputs.upload-artifact }}
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -916,34 +972,14 @@ jobs:
           files: rustdesk-${{ env.VERSION }}-unsigned.tar.gz
 
   build-rustdesk-android:
-    needs: [generate-bridge]
+    needs: [select-build-matrix, generate-bridge]
     name: build rustdesk android apk ${{ matrix.job.target }}
     runs-on: ${{ matrix.job.os }}
     strategy:
       fail-fast: false
       matrix:
-        job:
-          - {
-              arch: aarch64,
-              target: aarch64-linux-android,
-              os: ubuntu-24.04,
-              reltype: release,
-              suffix: "",
-            }
-          - {
-              arch: armv7,
-              target: armv7-linux-androideabi,
-              os: ubuntu-24.04,
-              reltype: release,
-              suffix: "",
-            }
-          - {
-              arch: x86_64,
-              target: x86_64-linux-android,
-              os: ubuntu-24.04,
-              reltype: release,
-              suffix: "",
-            }
+        # Slim CI (full-build=false): aarch64 only. Full CI also includes armv7 / x86_64.
+        job: ${{ fromJSON(needs.select-build-matrix.outputs.android) }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.1
@@ -1222,7 +1258,7 @@ jobs:
   build-rustdesk-android-universal:
     needs: [build-rustdesk-android]
     name: build rustdesk android universal apk
-    if: ${{ inputs.upload-artifact }}
+    if: ${{ inputs.full-build && inputs.upload-artifact }}
     runs-on: ubuntu-24.04
     env:
       reltype: release
@@ -1477,7 +1513,6 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
-        if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
         with:
           toolchain: ${{ env.RUST_VERSION }}
           targets: ${{ matrix.job.target }}
@@ -1494,14 +1529,12 @@ jobs:
           sed -i  "s/\[\"cdylib\", \"staticlib\", \"rlib\"\]/\[\"cdylib\"\]/g" Cargo.toml
 
       - name: Restore bridge files
-        if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: bridge-artifact
           path: ./
 
       - name: Setup vcpkg with Github Actions binary cache
-        if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
         uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2 # v11
         with:
           vcpkgDirectory: /opt/artifacts/vcpkg
@@ -1509,7 +1542,6 @@ jobs:
           doNotCache: false
 
       - name: Install vcpkg dependencies
-        if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
         run: |
           sudo apt install -y libva-dev && apt show libva-dev
           if ! $VCPKG_ROOT/vcpkg \
@@ -1529,7 +1561,6 @@ jobs:
         shell: bash
 
       - name: Restore bridge files
-        if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: bridge-artifact
@@ -1538,7 +1569,6 @@ jobs:
       - uses: rustdesk-org/run-on-arch-action@d3fcfbb632b84cf7f6bc772bfaaa2c2f4f8789a8 # no release tag; commit 2026-05-26
         name: Build rustdesk
         id: vcpkg
-        if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
         with:
           arch: ${{ matrix.job.arch }}
           distro: ${{ matrix.job.distro }}
@@ -1753,7 +1783,7 @@ jobs:
             res/rustdesk-${{ env.VERSION }}*.zst
 
   build-rustdesk-linux-sciter:
-    if: ${{ inputs.upload-artifact }}
+    if: ${{ inputs.full-build && inputs.upload-artifact }}
     runs-on: ${{ matrix.job.on }}
     name: build-rustdesk-linux-sciter ${{ matrix.job.target }}
     strategy:
@@ -1983,7 +2013,7 @@ jobs:
     name: Build appimage ${{ matrix.job.target }}
     needs: [build-rustdesk-linux]
     runs-on: ubuntu-22.04
-    if: ${{ inputs.upload-artifact }}
+    if: ${{ inputs.full-build && inputs.upload-artifact }}
     strategy:
       fail-fast: false
       matrix:
@@ -2036,7 +2066,7 @@ jobs:
       - build-rustdesk-linux
       - build-rustdesk-linux-sciter
     runs-on: ${{ matrix.job.on }}
-    if: ${{ inputs.upload-artifact }}
+    if: ${{ inputs.full-build && inputs.upload-artifact }}
     strategy:
       fail-fast: false
       matrix:
