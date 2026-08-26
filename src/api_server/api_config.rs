@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
 
+use super::os_login::{default_os_login_rules, OsLoginGuide, OsLoginRule};
+
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct ApiConfigFile {
     #[serde(default)]
@@ -29,6 +31,17 @@ pub struct ApiConfigFile {
     /// Optional relay host override (defaults to derived from rendezvous).
     #[serde(default)]
     pub relay_server: Option<String>,
+    /// External OCR argv; `{image}` is replaced with a temp JPEG path.
+    #[serde(default)]
+    pub ocr_cmd: Option<Vec<String>>,
+    #[serde(default)]
+    pub ocr_timeout_ms: Option<u64>,
+    #[serde(default)]
+    pub os_login_rules: Option<Vec<OsLoginRule>>,
+    #[serde(default)]
+    pub os_login_max_rounds: Option<u32>,
+    #[serde(default)]
+    pub os_login_round_delay_ms: Option<u64>,
     #[serde(default)]
     pub connect: Option<ApiConnectConfig>,
 }
@@ -70,6 +83,7 @@ pub struct ApiLaunchOptions {
     pub rendezvous_server: Option<String>,
     pub key: Option<String>,
     pub relay_server: Option<String>,
+    pub os_login_guide: OsLoginGuide,
     // Track which CLI fields were explicitly provided.
     pub cli_bind: bool,
     pub cli_token: bool,
@@ -77,6 +91,7 @@ pub struct ApiLaunchOptions {
     pub cli_auto_os: bool,
     pub cli_relay: bool,
     pub cli_show_gui: bool,
+    pub cli_ocr_timeout: bool,
 }
 
 impl Default for ApiLaunchOptions {
@@ -103,12 +118,14 @@ impl ApiLaunchOptions {
             rendezvous_server: None,
             key: None,
             relay_server: None,
+            os_login_guide: OsLoginGuide::default(),
             cli_bind: false,
             cli_token: false,
             cli_delay: false,
             cli_auto_os: false,
             cli_relay: false,
             cli_show_gui: false,
+            cli_ocr_timeout: false,
         }
     }
 }
@@ -161,6 +178,23 @@ pub fn merge(file: Option<ApiConfigFile>, cli: ApiLaunchOptions) -> ApiLaunchOpt
         }
         if let Some(v) = f.relay_server.filter(|s| !s.is_empty()) {
             out.relay_server = Some(v);
+        }
+        if let Some(cmd) = f.ocr_cmd.filter(|c| !c.is_empty()) {
+            out.os_login_guide.ocr_cmd = cmd;
+        }
+        if let Some(v) = f.ocr_timeout_ms {
+            out.os_login_guide.ocr_timeout_ms = v;
+        }
+        if let Some(rules) = f.os_login_rules.filter(|r| !r.is_empty()) {
+            out.os_login_guide.rules = rules;
+        } else if out.os_login_guide.rules.is_empty() {
+            out.os_login_guide.rules = default_os_login_rules();
+        }
+        if let Some(v) = f.os_login_max_rounds {
+            out.os_login_guide.max_rounds = v;
+        }
+        if let Some(v) = f.os_login_round_delay_ms {
+            out.os_login_guide.round_delay_ms = v;
         }
         if let Some(c) = f.connect {
             out.oneshot_connect = true;
@@ -217,6 +251,12 @@ pub fn merge(file: Option<ApiConfigFile>, cli: ApiLaunchOptions) -> ApiLaunchOpt
     }
     if cli.relay_server.is_some() {
         out.relay_server = cli.relay_server;
+    }
+    if !cli.os_login_guide.ocr_cmd.is_empty() {
+        out.os_login_guide.ocr_cmd = cli.os_login_guide.ocr_cmd;
+    }
+    if cli.cli_ocr_timeout {
+        out.os_login_guide.ocr_timeout_ms = cli.os_login_guide.ocr_timeout_ms;
     }
     if cli.oneshot_connect {
         out.oneshot_connect = true;
@@ -277,6 +317,21 @@ mod tests {
         cli.cli_show_gui = true;
         let m2 = merge(Some(file), cli);
         assert!(!m2.show_gui);
+    }
+
+    #[test]
+    fn merge_ocr_cmd_and_rules_from_file() {
+        let file = ApiConfigFile {
+            ocr_cmd: Some(vec!["tesseract".into(), "{image}".into(), "stdout".into()]),
+            os_login_rules: Some(vec![OsLoginRule {
+                id: "cad".into(),
+                any: vec!["unlock".into()],
+            }]),
+            ..Default::default()
+        };
+        let m = merge(Some(file), ApiLaunchOptions::defaults());
+        assert_eq!(m.os_login_guide.ocr_cmd[0], "tesseract");
+        assert_eq!(m.os_login_guide.rules[0].id, "cad");
     }
 
     #[test]

@@ -295,9 +295,9 @@ async fn os_login(
     Path(id): Path<String>,
     Json(params): Json<OsLoginParams>,
 ) -> Result<Json<SessionInfo>, (StatusCode, String)> {
-    state
-        .sessions
-        .os_login(&id, params)
+    hbb_common::tokio::task::spawn_blocking(move || state.sessions.os_login(&id, params))
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .map(Json)
         .map_err(|e| {
             let code = if e.contains("not found") {

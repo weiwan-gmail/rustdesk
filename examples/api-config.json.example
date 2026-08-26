@@ -8,6 +8,17 @@
   "show_gui": false,
   "rendezvous_server": "your-hbbs.example.com",
   "key": "YOUR_PUBLIC_KEY",
+  "ocr_cmd": ["tesseract", "{image}", "stdout", "-l", "chi_sim+eng"],
+  "ocr_timeout_ms": 5000,
+  "os_login_round_delay_ms": 1500,
+  "os_login_max_rounds": 12,
+  "os_login_rules": [
+    { "id": "wrong_password", "any": ["密码不正确", "incorrect password", "wrong password"] },
+    { "id": "cad", "any": ["Ctrl\\+Alt\\+Del", "Ctrl-Alt-Del", "解锁", "unlock"] },
+    { "id": "switch_user", "any": ["切换用户", "其他用户", "Other user", "Switch user"] },
+    { "id": "desktop", "any": ["回收站", "Recycle Bin", "此电脑", "This PC"] },
+    { "id": "password", "any": ["密码", "Password", "PIN"] }
+  ],
   "connect": {
     "peer_id": "192.168.1.10",
     "password": "rdpass",

@@ -89,6 +89,7 @@ pub struct SessionState {
     pub permissions: HashMap<String, bool>,
     pub os_login_status: OsLoginStatus,
     pub os_login_error: String,
+    pub os_login_phase: String,
 }
 
 #[derive(Clone, Default)]

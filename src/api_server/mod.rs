@@ -11,6 +11,7 @@ mod credentials;
 mod frame_store;
 mod handler;
 mod input;
+mod ocr;
 mod os_login;
 mod routes;
 mod session_mgr;
@@ -20,7 +21,7 @@ pub use api_config::{ApiConnectConfig, ApiLaunchOptions};
 pub use credentials::{CredentialPublicInfo, CredentialStore, SharedCredentialStore};
 pub use frame_store::{FrameStore, LatestFrame};
 pub use handler::{HeadlessHandler, OsLoginStatus, SessionState, SessionStatus};
-pub use os_login::OsLoginParams;
+pub use os_login::{OsLoginGuide, OsLoginParams, OsLoginRule};
 pub use session_mgr::{ConnectRequest, HeadlessSession, SessionManager};
 
 use hbb_common::log;
@@ -148,6 +149,20 @@ pub fn launch_options_from_args(args: &[String]) -> ApiLaunchOptions {
                 cli.relay_server = Some(args[i + 1].clone());
                 i += 2;
             }
+            "--ocr-cmd" if i + 1 < args.len() => {
+                cli.os_login_guide.ocr_cmd = args[i + 1]
+                    .split_whitespace()
+                    .map(|s| s.to_string())
+                    .collect();
+                i += 2;
+            }
+            "--ocr-timeout-ms" if i + 1 < args.len() => {
+                if let Ok(v) = args[i + 1].parse::<u64>() {
+                    cli.os_login_guide.ocr_timeout_ms = v;
+                    cli.cli_ocr_timeout = true;
+                }
+                i += 2;
+            }
             "--api-connect" | "--headless-connect" => {
                 cli.oneshot_connect = true;
                 if i + 1 < args.len() && !args[i + 1].starts_with("--") {
@@ -221,6 +236,19 @@ mod launch_tests {
         ]);
         assert!(!no_gui.show_gui);
     }
+
+    #[test]
+    fn parse_ocr_cmd() {
+        let o = launch_options_from_args(&[
+            "--api-server".into(),
+            "--ocr-cmd".into(),
+            "tesseract {image} stdout".into(),
+        ]);
+        assert_eq!(
+            o.os_login_guide.ocr_cmd,
+            vec!["tesseract", "{image}", "stdout"]
+        );
+    }
 }
 
 async fn run_async(opts: ApiLaunchOptions) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -248,8 +276,12 @@ async fn run_async(opts: ApiLaunchOptions) -> Result<(), Box<dyn std::error::Err
     }
 
     let creds = credentials::open_csv(opts.credentials_csv.clone());
-    let sessions = Arc::new(SessionManager::with_credentials(creds.clone()));
     let frames = Arc::new(FrameStore::new());
+    let sessions = Arc::new(SessionManager::with_options(
+        creds.clone(),
+        frames.clone(),
+        opts.os_login_guide.clone(),
+    ));
     let state = Arc::new(AppState {
         sessions: sessions.clone(),
         frames: frames.clone(),

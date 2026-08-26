@@ -72,11 +72,40 @@ CSV columns: `peer_id,ip,os_username,os_password,rustdesk_password` (empty colum
 
 ### OS login sequence
 
-After connect (when `auto_os_login` is true and OS creds exist): wait `os_login_delay_ms` (default 2500), send **Ctrl+Alt+Delete** (Windows lock SAS), optionally click-activate, then type `username` → `Tab` → `password` → `Enter`. Session JSON exposes `os_login_status`: `idle|pending|running|done|failed`.
+After connect (when `auto_os_login` is true and OS creds exist): wait `os_login_delay_ms`, then run a **guided loop** (does not change the remote rustdesk.exe):
 
-If RustDesk asks for a connection password, the API submits `password` / CSV `rustdesk_password` automatically.
+1. Grab `screen/latest` JPEG.
+2. If `ocr_cmd` is set, spawn that external process (`{image}` → temp JPEG). OCR is optional and fully decoupled.
+3. Match OCR text against `os_login_rules` (regex, case-insensitive, first hit wins). Unlisted Spotlight/date text is ignored.
+4. Act on the phase:
+   - `cad` → Ctrl+Alt+Delete
+   - `wrong_password` → Enter (dismiss)
+   - `password` → type OS password only if the configured username is already visible; otherwise username → Tab → password
+   - `switch_user` → click OCR box if coordinates exist, then username + password
+   - `desktop` → stop (`os_login_status=done`)
+5. If OCR is missing or unmatched: **CAD + password only** (do not type the username — typical Windows lock already shows the current user).
 
-Manual trigger: `POST /api/v1/sessions/{id}/os-login` (`ctrl_alt_del` defaults true).
+Session JSON includes `os_login_status` and `os_login_phase`.
+
+Built-in default rules cover zh-CN + en (Ctrl+Alt+Del / 解锁 / 密码 / 回收站, etc.). Override with `os_login_rules` in `--api-config`.
+
+External OCR stdout:
+
+```json
+{ "text": "Administrator\n密码", "lines": [ { "text": "切换用户", "x": 40, "y": 740, "w": 90, "h": 24 } ] }
+```
+
+Plain Tesseract text is also accepted. Password is never passed to the OCR process.
+
+```bash
+rustdesk --api-connect 288806401 \
+  --password Test12345678 \
+  --os-username Administrator \
+  --os-password 'abc@123' \
+  --ocr-cmd 'tesseract {image} stdout -l chi_sim+eng'
+```
+
+Manual one-shot (no OCR): `POST /os-login` with `guided: false` (default). Guided: `{ "guided": true, "username": "Administrator", "password": "..." }`.
 
 ## Endpoints
 
@@ -85,7 +114,7 @@ Manual trigger: `POST /api/v1/sessions/{id}/os-login` (`ctrl_alt_del` defaults t
 | GET | `/api/v1/health` | Liveness |
 | POST | `/api/v1/sessions` | Connect `{ "peer_id", "password?", "relay?", "os_username?", "os_password?", "auto_os_login?", "os_login_delay_ms?" }` |
 | GET | `/api/v1/sessions` | List sessions (includes `os_login_status`) |
-| GET | `/api/v1/sessions/{id}` | Session status |
+| GET | `/api/v1/sessions/{id}` | Session status (`os_login_status`, `os_login_phase`) |
 | DELETE | `/api/v1/sessions/{id}` | Disconnect |
 | POST | `/api/v1/sessions/{id}/login` | Submit RustDesk password / 2FA |
 | POST | `/api/v1/sessions/{id}/os-login` | Type Windows OS username/password once |
@@ -123,7 +152,8 @@ Coordinates for mouse actions are **remote pixel** coordinates matching the scre
   "activate": true,
   "ctrl_alt_del": true,
   "delay_ms": 0,
-  "username_first": true
+  "username_first": false,
+  "guided": false
 }
 ```
 
@@ -157,6 +187,10 @@ JSON (default) or TOML (`.toml`). CLI flags override file fields.
 | `rendezvous_server` | Custom hbbs host (sets `custom-rendezvous-server`) |
 | `key` | Custom server public key |
 | `relay_server` | Optional hbbr host override |
+| `ocr_cmd` | External OCR argv; `{image}` is the temp JPEG. Example: `["tesseract","{image}","stdout","-l","chi_sim+eng"]` |
+| `ocr_timeout_ms` | OCR process timeout (default 5000) |
+| `os_login_rules` | Ordered `{id, any: [regex,...]}` phases: `wrong_password`, `cad`, `switch_user`, `desktop`, `password` |
+| `os_login_max_rounds` / `os_login_round_delay_ms` | Guided loop budget |
 | `connect` | If present, start oneshot connect (same as `--api-connect`) |
 | `connect.peer_id` / `password` / `os_username` / `os_password` | Oneshot peer + passwords |
 

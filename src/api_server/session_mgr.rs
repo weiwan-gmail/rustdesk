@@ -11,7 +11,7 @@ use uuid::Uuid;
 use super::credentials::SharedCredentialStore;
 use super::frame_store::FrameStore;
 use super::handler::{HeadlessHandler, OsLoginStatus, SessionState, SessionStatus};
-use super::os_login::{self, OsLoginParams};
+use super::os_login::{self, OsLoginGuide, OsLoginParams};
 
 pub type HeadlessSession = Arc<Session<HeadlessHandler>>;
 
@@ -19,6 +19,8 @@ pub type HeadlessSession = Arc<Session<HeadlessHandler>>;
 pub struct SessionManager {
     sessions: RwLock<HashMap<String, HeadlessSession>>,
     pub credentials: Option<SharedCredentialStore>,
+    frames: Option<Arc<FrameStore>>,
+    os_login_guide: OsLoginGuide,
 }
 
 #[derive(Debug, Deserialize)]
@@ -56,6 +58,7 @@ pub struct SessionInfo {
     pub fingerprint: String,
     pub os_login_status: String,
     pub os_login_error: String,
+    pub os_login_phase: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -92,6 +95,7 @@ impl From<&SessionState> for SessionInfo {
             fingerprint: s.fingerprint.clone(),
             os_login_status: s.os_login_status.as_str().to_string(),
             os_login_error: s.os_login_error.clone(),
+            os_login_phase: s.os_login_phase.clone(),
         }
     }
 }
@@ -105,6 +109,21 @@ impl SessionManager {
         Self {
             sessions: RwLock::new(HashMap::new()),
             credentials: Some(credentials),
+            frames: None,
+            os_login_guide: OsLoginGuide::default(),
+        }
+    }
+
+    pub fn with_options(
+        credentials: SharedCredentialStore,
+        frames: Arc<FrameStore>,
+        os_login_guide: OsLoginGuide,
+    ) -> Self {
+        Self {
+            sessions: RwLock::new(HashMap::new()),
+            credentials: Some(credentials),
+            frames: Some(frames),
+            os_login_guide,
         }
     }
 
@@ -160,7 +179,7 @@ impl SessionManager {
         let auto_os = req.auto_os_login.unwrap_or(true);
         let delay_ms = req.os_login_delay_ms.unwrap_or(2500);
 
-        let handler = HeadlessHandler::new(session_id.clone(), peer_id.clone(), frames);
+        let handler = HeadlessHandler::new(session_id.clone(), peer_id.clone(), frames.clone());
         let session: Session<HeadlessHandler> = Session {
             password: password.clone(),
             server_keyboard_enabled: Arc::new(RwLock::new(true)),
@@ -217,10 +236,12 @@ impl SessionManager {
                 password: os_pass,
                 activate: true,
                 delay_ms,
-                username_first: true,
+                username_first: false,
                 ctrl_alt_del: true,
+                guided: true,
             };
-            os_login::spawn_after_connect((*session).clone(), params);
+            let guide = self.os_login_guide.clone();
+            os_login::spawn_after_connect((*session).clone(), params, frames, guide);
         }
 
         Ok(SessionInfo::from(&session.ui_handler.snapshot()))
@@ -234,13 +255,29 @@ impl SessionManager {
         let session = self
             .get(session_id)
             .ok_or_else(|| "session not found".to_string())?;
-        os_login::perform(&session, &params).map_err(|e| {
-            if let Ok(mut s) = session.ui_handler.state.write() {
-                s.os_login_status = OsLoginStatus::Failed;
-                s.os_login_error = e.clone();
-            }
-            e
-        })?;
+        if params.guided {
+            let frames = self
+                .frames
+                .clone()
+                .ok_or_else(|| "frame store unavailable".to_string())?;
+            os_login::perform_guided(&session, &params, &frames, &self.os_login_guide).map_err(
+                |e| {
+                    if let Ok(mut s) = session.ui_handler.state.write() {
+                        s.os_login_status = OsLoginStatus::Failed;
+                        s.os_login_error = e.clone();
+                    }
+                    e
+                },
+            )?;
+        } else {
+            os_login::perform(&session, &params).map_err(|e| {
+                if let Ok(mut s) = session.ui_handler.state.write() {
+                    s.os_login_status = OsLoginStatus::Failed;
+                    s.os_login_error = e.clone();
+                }
+                e
+            })?;
+        }
         Ok(SessionInfo::from(&session.ui_handler.snapshot()))
     }
 
