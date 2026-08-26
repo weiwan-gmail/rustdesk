@@ -20,7 +20,7 @@
 
 这些是「老代码 + 新工具链」的典型位腐烂（bitrot），`fetch-codecs.sh` 和补丁里的 `package.json` 固定就是为了解决它们：
 
-1. **`@types/node`**：`ts-proto > protobufjs` 间接依赖它，`^13` 的范围在 2026 年会解析到 v26+，其 `.d.ts` 用了 TS 4.4 无法解析的新语法 → 一堆 `TS1005`。**解法**：把 `@types/node` 写成 **直接依赖 + 无 glob 的 `resolutions`**（`16.18.68`）。Yarn 1.22 **会忽略** `**/@types/node` 这种 glob resolution，只写它不够。`skipLibCheck` 也没用——那是语法错误不是类型错误。`pin-js-deps.sh` 在 `yarn install` 前强制写入这两处。
+1. **`@types/node` / TypeScript**：`ts-proto > protobufjs` 间接依赖 `@types/node`。2024 年的 `typescript@4.4`/`4.9` 无法解析 2026 年 `@types/node@26` 的 `ffi.d.ts`（需要 TS 5.2+）→ `TS1005`；当时只能钉死 `16.18.68`。现在协议栈钉 **`typescript@6.0.3`**（最后一代 JS 编译器，给 TS 7 铺路；7.0 还没有 Compiler API），因此可以改钉当前的 `@types/node@26.3.0`（npm `ts6.0` dist-tag）。`skipLibCheck` 挡不住语法错误，所以仍用直接依赖 + npm `overrides`。`moduleResolution` 从已弃用的 `Node`（node10）改为 `bundler`，不要用 `"ignoreDeprecations": "6.0"`。`pin-js-deps.sh` 在安装前强制写入这些钉死版本。
 2. **`libsodium`/`libsodium-wrappers`**：`^0.7.9` 解析到 0.7.16，其 ESM 布局里 `libsodium-wrappers.mjs` 相对导入 `./libsodium.mjs`，但该文件在另一个包里，vite 2.8 解析失败。**解法**：精确固定 `0.7.13`（2024-05 时代的版本）。注意 yarn1 的 `resolutions` 用 `**/libsodium` 没生效，直接改 `dependencies` 里的版本号最可靠。
 3. **`yarn.lock` 与 `package.json` 不同步**：该提交的 lockfile 本来就是旧的，`--frozen-lockfile` 会失败。**不要用** `--frozen-lockfile`，让 yarn 重新解析。
 4. **`python` vs `python3`**：`gen_js_from_hbb.py`/`ts_proto.py` 用 `python` 调用。新系统只有 `python3`，需软链或 `python-is-python3`。

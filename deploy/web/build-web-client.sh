@@ -67,22 +67,27 @@ if [ "${SKIP_JS:-0}" != "1" ] || [ ! -f "$WEB/js/dist/index.js" ]; then
     exit 1
   fi
   # pin-js-deps.sh writes exact versions into package.json (Yarn 1 ignores
-  # glob resolutions). npm + overrides: GHA otherwise hoists @types/node@26
-  # (ffi.d.ts needs TS 5.2+) and libsodium-wrappers@0.7.16 (ESM import of
-  # ./libsodium.mjs that vite 2.8 cannot resolve).
+  # glob resolutions). npm + overrides: pin typescript 6.0.3 (not 7.x) and a
+  # current @types/node that 6.0.3 can parse. libsodium-wrappers@0.7.16
+  # ESM-imports ./libsodium.mjs that vite 2.8 cannot resolve.
   "$HERE/pin-js-deps.sh" "$WEB/js/package.json"
   (cd "$WEB/js" &&
     rm -f yarn.lock package-lock.json &&
     npm install &&
     npm install --no-save --no-package-lock \
-      @types/node@16.18.68 libsodium@0.7.13 libsodium-wrappers@0.7.13 &&
+      typescript@6.0.3 @types/node@26.3.0 libsodium@0.7.13 libsodium-wrappers@0.7.13 &&
     node -e "
+      const tsV = require('typescript/package.json').version;
       const nodeV = require('@types/node/package.json').version;
       const wrapV = require('libsodium-wrappers/package.json').version;
       const sodV = require('libsodium/package.json').version;
-      console.log('>> @types/node', nodeV, 'libsodium', sodV, 'wrappers', wrapV);
-      if (!String(nodeV).startsWith('16.')) {
-        console.error('!! expected @types/node 16.x, got ' + nodeV);
+      console.log('>> typescript', tsV, '@types/node', nodeV, 'libsodium', sodV, 'wrappers', wrapV);
+      if (tsV !== '6.0.3') {
+        console.error('!! expected typescript 6.0.3, got ' + tsV);
+        process.exit(1);
+      }
+      if (!String(nodeV).startsWith('26.')) {
+        console.error('!! expected @types/node 26.x, got ' + nodeV);
         process.exit(1);
       }
       if (wrapV !== '0.7.13' || sodV !== '0.7.13') {
