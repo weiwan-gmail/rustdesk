@@ -22,7 +22,8 @@ if windows:
 elif osx:
     flutter_build_dir = 'build/macos/Build/Products/Release/'
 else:
-    flutter_build_dir = 'build/linux/x64/release/bundle/'
+    linux_arch = 'arm64' if platform.machine().lower() in ('arm64', 'aarch64') else 'x64'
+    flutter_build_dir = f'build/linux/{linux_arch}/release/bundle/'
 flutter_build_dir_2 = f'flutter/{flutter_build_dir}'
 skip_cargo = False
 
@@ -44,6 +45,56 @@ def system2(cmd):
     if exit_code != 0:
         sys.stderr.write(f"Error occurred when executing: `{cmd}`. Exiting.\n")
         sys.exit(-1)
+
+
+def repo_root():
+    return Path(__file__).resolve().parent
+
+
+def web_helpers_triple():
+    """Directory name under deploy/web-helpers/ for this host."""
+    if windows:
+        return 'windows-arm64' if platform.machine().lower() in ('arm64', 'aarch64') else 'windows-amd64'
+    if osx:
+        return None
+    deb = os.environ.get('DEB_ARCH', '')
+    if deb == 'arm64' or platform.machine().lower() in ('aarch64', 'arm64'):
+        return 'linux-arm64'
+    return 'linux-amd64'
+
+
+def stage_web_helpers(dest_dir):
+    """Copy rustdesk-web / rustdesk-web-direct into the package install dir."""
+    triple = web_helpers_triple()
+    if not triple:
+        return
+    src = repo_root() / 'deploy' / 'web-helpers' / triple
+    dest = Path(dest_dir)
+    if not dest.is_absolute():
+        dest = Path.cwd() / dest
+    required = os.environ.get('REQUIRE_WEB_HELPERS') == '1'
+    if not src.is_dir():
+        msg = f'web helpers not found at {src}'
+        if required:
+            sys.stderr.write(msg + '\n')
+            sys.exit(-1)
+        print(msg + ', skipping')
+        return
+    dest.mkdir(parents=True, exist_ok=True)
+    names = []
+    for path in sorted(src.iterdir()):
+        if not path.is_file():
+            continue
+        target = dest / path.name
+        shutil.copy2(path, target)
+        if not windows:
+            os.chmod(target, 0o755)
+        names.append(path.name)
+    if required and not names:
+        sys.stderr.write(f'web helpers dir {src} is empty\n')
+        sys.exit(-1)
+    if names:
+        print(f'staged web helpers {names} -> {dest}')
 
 
 def get_version():
@@ -322,6 +373,7 @@ def build_flutter_deb(version, features):
         ffi_bindgen_function_refactor()
     os.chdir('flutter')
     system2('flutter build linux --release')
+    stage_web_helpers(flutter_build_dir)
     system2('mkdir -p tmpdeb/usr/bin/')
     system2('mkdir -p tmpdeb/usr/share/rustdesk')
     system2('mkdir -p tmpdeb/etc/rustdesk/')
@@ -432,6 +484,7 @@ def build_flutter_arch_manjaro(version, features):
     ffi_bindgen_function_refactor()
     os.chdir('flutter')
     system2('flutter build linux --release')
+    stage_web_helpers(flutter_build_dir)
     system2(f'strip {flutter_build_dir}/lib/librustdesk.so')
     os.chdir('../res')
     system2('HBB=`pwd`/.. FLUTTER=1 makepkg -f')
@@ -448,6 +501,7 @@ def build_flutter_windows(version, features, skip_portable_pack):
     os.chdir('..')
     shutil.copy2('target/release/deps/dylib_virtual_display.dll',
                  flutter_build_dir_2)
+    stage_web_helpers(flutter_build_dir_2)
     if skip_portable_pack:
         return
     os.chdir('libs/portable')
