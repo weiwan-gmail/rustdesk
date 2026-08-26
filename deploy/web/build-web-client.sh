@@ -66,9 +66,11 @@ if [ "${SKIP_JS:-0}" != "1" ] || [ ! -f "$WEB/js/dist/index.js" ]; then
     echo "!! protoc is required (install protobuf-compiler)"
     exit 1
   fi
-  # npm + overrides: Yarn 1 / npm on GHA otherwise hoist @types/node@26
+  # pin-js-deps.sh writes exact versions into package.json (Yarn 1 ignores
+  # glob resolutions). npm + overrides: GHA otherwise hoists @types/node@26
   # (ffi.d.ts needs TS 5.2+) and libsodium-wrappers@0.7.16 (ESM import of
   # ./libsodium.mjs that vite 2.8 cannot resolve).
+  "$HERE/pin-js-deps.sh" "$WEB/js/package.json"
   (cd "$WEB/js" &&
     rm -f yarn.lock package-lock.json &&
     npm install &&
