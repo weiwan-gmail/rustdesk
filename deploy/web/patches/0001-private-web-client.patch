@@ -318,6 +318,28 @@ index 22c51fa54..13385d973 100644
      build: {
          manifest: false,
          rollupOptions: {
+diff --git a/flutter/web/js/src/websock.ts b/flutter/web/js/src/websock.ts
+index 6f05e6f6b..9a8b3cc81 100644
+--- a/flutter/web/js/src/websock.ts
++++ b/flutter/web/js/src/websock.ts
+@@ -48,14 +48,15 @@ export default class Websock {
+       k[1] += 1;
+       data = globals.encrypt(data, k[1], k[0]);
+     }
+-    this._websocket.send(data);
++    // TS 6: protobuf/sodium Uint8Array is ArrayBufferLike; DOM send() wants BufferSource.
++    this._websocket.send(data as unknown as BufferSource);
+   }
+ 
+   sendRendezvous(data: rendezvous.DeepPartial<rendezvous.RendezvousMessage>) {
+     this._websocket.send(
+       rendezvous.RendezvousMessage.encode(
+         rendezvous.RendezvousMessage.fromPartial(data)
+-      ).finish()
++      ).finish() as unknown as BufferSource
+     );
+   }
+ 
 diff --git a/flutter/web/js/src/connection.ts b/flutter/web/js/src/connection.ts
 index 297004bd8..5a4881f10 100644
 --- a/flutter/web/js/src/connection.ts
