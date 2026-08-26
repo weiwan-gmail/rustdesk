@@ -46,8 +46,16 @@ fi
 # --- 2. privatization patch ---------------------------------------------------
 if ! grep -q RUSTDESK_CONFIG "$WEB/js/src/connection.ts"; then
   echo ">> applying patches/0001-private-web-client.patch"
-  git -C "$SRC" apply "$HERE/patches/0001-private-web-client.patch" 2>/dev/null \
+  # Isolated from the parent rustdesk git dir. Plain `git -C "$SRC" apply`
+  # finds the checkout's .git and can exit 0 without touching a tarball
+  # extract under deploy/web/.build/ (GHA then typechecks the unpatched
+  # tsconfig: moduleResolution Node → TS5107 on TypeScript 6).
+  (cd "$SRC" && git --git-dir=/dev/null --work-tree=. apply "$HERE/patches/0001-private-web-client.patch") \
     || (cd "$SRC" && patch -p1 < "$HERE/patches/0001-private-web-client.patch")
+fi
+if ! grep -q '"moduleResolution": "bundler"' "$WEB/js/tsconfig.json"; then
+  echo "!! patch did not set tsconfig moduleResolution to bundler"
+  exit 1
 fi
 cp "$HERE/config.js" "$WEB/config.js"
 

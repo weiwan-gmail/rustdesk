@@ -39,12 +39,19 @@ fi
 # --- 2. patches: shared privatization + direct connect ------------------------
 if ! grep -q RUSTDESK_CONFIG "$WEB/js/src/connection.ts"; then
   echo ">> applying 0001-private-web-client.patch"
-  git -C "$SRC" apply "$WEB_DIR/patches/0001-private-web-client.patch" 2>/dev/null \
+  # Isolated from the parent rustdesk git dir. Plain `git -C "$SRC" apply`
+  # finds the checkout's .git and can exit 0 without touching a tarball
+  # extract under .build/.
+  (cd "$SRC" && git --git-dir=/dev/null --work-tree=. apply "$WEB_DIR/patches/0001-private-web-client.patch") \
     || (cd "$SRC" && patch -p1 < "$WEB_DIR/patches/0001-private-web-client.patch")
+fi
+if ! grep -q '"moduleResolution": "bundler"' "$WEB/js/tsconfig.json"; then
+  echo "!! patch did not set tsconfig moduleResolution to bundler"
+  exit 1
 fi
 if ! grep -q _startDirect "$WEB/js/src/connection.ts"; then
   echo ">> applying 0002-direct-connect.patch"
-  git -C "$SRC" apply "$HERE/patches/0002-direct-connect.patch" 2>/dev/null \
+  (cd "$SRC" && git --git-dir=/dev/null --work-tree=. apply "$HERE/patches/0002-direct-connect.patch") \
     || (cd "$SRC" && patch -p1 < "$HERE/patches/0002-direct-connect.patch")
 fi
 cp "$WEB_DIR/config.js" "$WEB/config.js"
