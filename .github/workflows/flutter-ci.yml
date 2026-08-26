@@ -2,6 +2,15 @@ name: Full Flutter CI
 
 on:
   workflow_dispatch:
+    inputs:
+      upload-artifact:
+        description: "Upload artifacts and publish to a GitHub Release"
+        type: boolean
+        default: true
+      upload-tag:
+        description: "Release tag to publish to (prerelease). Default nightly."
+        type: string
+        default: "nightly"
   pull_request:
     paths-ignore:
     - "docs/**"
@@ -24,11 +33,13 @@ jobs:
     permissions:
       contents: write
     uses: ./.github/workflows/flutter-build.yml
+    secrets: inherit
     with:
-      # Publish downloadable builds (incl. Android APKs) on pushes to master/develop,
-      # but keep pull_request runs artifact-free (build verification only).
-      upload-artifact: ${{ github.event_name == 'push' }}
-      # PR / develop / master: only the common packages (Windows x64, Linux
-      # amd64+arm64, macOS arm64, Android arm64). Nightly and tag workflows
-      # keep the default full-build: true.
+      # Publish on push to master/develop, and on manual Run workflow
+      # (default upload-artifact=true). Pull requests stay artifact-free.
+      upload-artifact: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.upload-artifact) }}
+      upload-tag: ${{ (github.event_name == 'workflow_dispatch' && inputs.upload-tag) || 'nightly' }}
+      # PR / develop / master / manual dispatch: only the common packages
+      # (Windows x64, Linux amd64+arm64, macOS arm64, Android arm64).
+      # Nightly and tag workflows keep the default full-build: true.
       full-build: false
