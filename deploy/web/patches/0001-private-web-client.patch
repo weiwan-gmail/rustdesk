@@ -240,13 +240,13 @@ diff --git a/flutter/web/js/package.json b/flutter/web/js/package.json
 index 436806e8d..6b21b057d 100644
 --- a/flutter/web/js/package.json
 +++ b/flutter/web/js/package.json
-@@ -7,16 +7,27 @@
+@@ -7,16 +7,29 @@
      "preview": "vite preview"
    },
    "devDependencies": {
 -    "typescript": "^4.4.4",
-+    "@types/node": "16.18.68",
-+    "typescript": "4.9.5",
++    "@types/node": "26.3.0",
++    "typescript": "6.0.3",
      "vite": "2.8"
    },
    "dependencies": {
@@ -261,12 +261,14 @@ index 436806e8d..6b21b057d 100644
      "zstddec": "^0.0.2"
 +  },
 +  "resolutions": {
-+    "@types/node": "16.18.68",
++    "@types/node": "26.3.0",
++    "typescript": "6.0.3",
 +    "libsodium": "0.7.13",
 +    "libsodium-wrappers": "0.7.13"
 +  },
 +  "overrides": {
-+    "@types/node": "16.18.68",
++    "@types/node": "26.3.0",
++    "typescript": "6.0.3",
 +    "libsodium": "0.7.13",
 +    "libsodium-wrappers": "0.7.13"
    }
@@ -275,14 +277,24 @@ diff --git a/flutter/web/js/tsconfig.json b/flutter/web/js/tsconfig.json
 index ca949de6a..dbab5d95d 100644
 --- a/flutter/web/js/tsconfig.json
 +++ b/flutter/web/js/tsconfig.json
-@@ -16,7 +16,9 @@
+@@ -8,15 +8,18 @@
+       "ESNext",
+       "DOM"
+     ],
+-    "moduleResolution": "Node",
++    "moduleResolution": "bundler",
+     "strict": true,
+     "sourceMap": true,
+     "resolveJsonModule": true,
+     "esModuleInterop": true,
      "noEmit": true,
      "noUnusedLocals": true,
      "noUnusedParameters": true,
 -    "noImplicitReturns": true
 +    "noImplicitReturns": true,
 +    "skipLibCheck": true,
-+    "typeRoots": ["./node_modules/@types"]
++    "stableTypeOrdering": true,
++    "types": ["node"]
    },
    "include": [
      "./src"
@@ -306,6 +318,28 @@ index 22c51fa54..13385d973 100644
      build: {
          manifest: false,
          rollupOptions: {
+diff --git a/flutter/web/js/src/websock.ts b/flutter/web/js/src/websock.ts
+index 6f05e6f6b..9a8b3cc81 100644
+--- a/flutter/web/js/src/websock.ts
++++ b/flutter/web/js/src/websock.ts
+@@ -48,14 +48,15 @@ export default class Websock {
+       k[1] += 1;
+       data = globals.encrypt(data, k[1], k[0]);
+     }
+-    this._websocket.send(data);
++    // TS 6: protobuf/sodium Uint8Array is ArrayBufferLike; DOM send() wants BufferSource.
++    this._websocket.send(data as unknown as BufferSource);
+   }
+ 
+   sendRendezvous(data: rendezvous.DeepPartial<rendezvous.RendezvousMessage>) {
+     this._websocket.send(
+       rendezvous.RendezvousMessage.encode(
+         rendezvous.RendezvousMessage.fromPartial(data)
+-      ).finish()
++      ).finish() as unknown as BufferSource
+     );
+   }
+ 
 diff --git a/flutter/web/js/src/connection.ts b/flutter/web/js/src/connection.ts
 index 297004bd8..5a4881f10 100644
 --- a/flutter/web/js/src/connection.ts

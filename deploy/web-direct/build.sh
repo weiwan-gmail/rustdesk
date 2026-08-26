@@ -39,12 +39,19 @@ fi
 # --- 2. patches: shared privatization + direct connect ------------------------
 if ! grep -q RUSTDESK_CONFIG "$WEB/js/src/connection.ts"; then
   echo ">> applying 0001-private-web-client.patch"
-  git -C "$SRC" apply "$WEB_DIR/patches/0001-private-web-client.patch" 2>/dev/null \
+  # Isolated from the parent rustdesk git dir. Plain `git -C "$SRC" apply`
+  # finds the checkout's .git and can exit 0 without touching a tarball
+  # extract under .build/.
+  (cd "$SRC" && git --git-dir=/dev/null --work-tree=. apply "$WEB_DIR/patches/0001-private-web-client.patch") \
     || (cd "$SRC" && patch -p1 < "$WEB_DIR/patches/0001-private-web-client.patch")
+fi
+if ! grep -q '"moduleResolution": "bundler"' "$WEB/js/tsconfig.json"; then
+  echo "!! patch did not set tsconfig moduleResolution to bundler"
+  exit 1
 fi
 if ! grep -q _startDirect "$WEB/js/src/connection.ts"; then
   echo ">> applying 0002-direct-connect.patch"
-  git -C "$SRC" apply "$HERE/patches/0002-direct-connect.patch" 2>/dev/null \
+  (cd "$SRC" && git --git-dir=/dev/null --work-tree=. apply "$HERE/patches/0002-direct-connect.patch") \
     || (cd "$SRC" && patch -p1 < "$HERE/patches/0002-direct-connect.patch")
 fi
 cp "$WEB_DIR/config.js" "$WEB/config.js"
@@ -65,22 +72,27 @@ if [ "${SKIP_JS:-0}" != "1" ] || [ ! -f "$WEB/js/dist/index.js" ]; then
     exit 1
   fi
   # pin-js-deps.sh writes exact versions into package.json (Yarn 1 ignores
-  # glob resolutions). npm + overrides: GHA otherwise hoists @types/node@26
-  # (ffi.d.ts needs TS 5.2+) and libsodium-wrappers@0.7.16 (ESM import of
-  # ./libsodium.mjs that vite 2.8 cannot resolve).
+  # glob resolutions). npm + overrides: pin typescript 6.0.3 (not 7.x) and a
+  # current @types/node that 6.0.3 can parse. libsodium-wrappers@0.7.16
+  # ESM-imports ./libsodium.mjs that vite 2.8 cannot resolve.
   "$WEB_DIR/pin-js-deps.sh" "$WEB/js/package.json"
   (cd "$WEB/js" &&
     rm -f yarn.lock package-lock.json &&
     npm install &&
     npm install --no-save --no-package-lock \
-      @types/node@16.18.68 libsodium@0.7.13 libsodium-wrappers@0.7.13 &&
+      typescript@6.0.3 @types/node@26.3.0 libsodium@0.7.13 libsodium-wrappers@0.7.13 &&
     node -e "
+      const tsV = require('typescript/package.json').version;
       const nodeV = require('@types/node/package.json').version;
       const wrapV = require('libsodium-wrappers/package.json').version;
       const sodV = require('libsodium/package.json').version;
-      console.log('>> @types/node', nodeV, 'libsodium', sodV, 'wrappers', wrapV);
-      if (!String(nodeV).startsWith('16.')) {
-        console.error('!! expected @types/node 16.x, got ' + nodeV);
+      console.log('>> typescript', tsV, '@types/node', nodeV, 'libsodium', sodV, 'wrappers', wrapV);
+      if (tsV !== '6.0.3') {
+        console.error('!! expected typescript 6.0.3, got ' + tsV);
+        process.exit(1);
+      }
+      if (!String(nodeV).startsWith('26.')) {
+        console.error('!! expected @types/node 26.x, got ' + nodeV);
         process.exit(1);
       }
       if (wrapV !== '0.7.13' || sodV !== '0.7.13') {

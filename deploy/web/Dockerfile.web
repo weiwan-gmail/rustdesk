@@ -27,9 +27,8 @@ COPY config.js flutter/web/config.js
 # ---- codec bundle + JS protocol stack ---------------------------------------
 FROM node:22-bookworm AS js
 RUN apt-get update \
- && apt-get install -y --no-install-recommends python3 python-is-python3 curl ca-certificates unzip \
- && rm -rf /var/lib/apt/lists/* \
- && npm install -g yarn typescript protoc
+ && apt-get install -y --no-install-recommends python3 python-is-python3 protobuf-compiler curl ca-certificates unzip \
+ && rm -rf /var/lib/apt/lists/*
 COPY --from=src /src /src
 COPY fetch-codecs.sh /tmp/fetch-codecs.sh
 RUN bash /tmp/fetch-codecs.sh /src/flutter/web
@@ -38,7 +37,7 @@ COPY pin-js-deps.sh /tmp/pin-js-deps.sh
 RUN bash /tmp/pin-js-deps.sh package.json \
  && rm -f yarn.lock package-lock.json \
  && npm install \
- && npm install --no-save --no-package-lock @types/node@16.18.68 libsodium@0.7.13 libsodium-wrappers@0.7.13 \
+ && npm install --no-save --no-package-lock typescript@6.0.3 @types/node@26.3.0 libsodium@0.7.13 libsodium-wrappers@0.7.13 \
  && npm run build
 
 # ---- flutter build web -------------------------------------------------------
