@@ -6,6 +6,8 @@
   "os_login_delay_ms": 2500,
   "auto_os_login": true,
   "show_gui": false,
+  "rendezvous_server": "your-hbbs.example.com",
+  "key": "YOUR_PUBLIC_KEY",
   "connect": {
     "peer_id": "192.168.1.10",
     "password": "rdpass",

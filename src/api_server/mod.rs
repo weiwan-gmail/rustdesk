@@ -136,6 +136,18 @@ pub fn launch_options_from_args(args: &[String]) -> ApiLaunchOptions {
                 cli.cli_show_gui = true;
                 i += 1;
             }
+            "--rendezvous-server" if i + 1 < args.len() => {
+                cli.rendezvous_server = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--key" if i + 1 < args.len() => {
+                cli.key = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--relay-server" if i + 1 < args.len() => {
+                cli.relay_server = Some(args[i + 1].clone());
+                i += 2;
+            }
             "--api-connect" | "--headless-connect" => {
                 cli.oneshot_connect = true;
                 if i + 1 < args.len() && !args[i + 1].starts_with("--") {
@@ -212,6 +224,29 @@ mod launch_tests {
 }
 
 async fn run_async(opts: ApiLaunchOptions) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Apply custom server options before any outbound connect.
+    if let Some(ref host) = opts.rendezvous_server {
+        log::info!("api-server using custom rendezvous: {host}");
+        hbb_common::config::Config::set_option(
+            "custom-rendezvous-server".to_string(),
+            host.clone(),
+        );
+    }
+    if let Some(ref key) = opts.key {
+        hbb_common::config::Config::set_option("key".to_string(), key.clone());
+    }
+    if let Some(ref relay) = opts.relay_server {
+        log::info!("api-server using relay-server: {relay}");
+        hbb_common::config::Config::set_option("relay-server".to_string(), relay.clone());
+    }
+    if opts.relay {
+        // Prefer relay path from this cloud/NAT environment.
+        hbb_common::config::Config::set_option(
+            "force-always-relay".to_string(),
+            "Y".to_string(),
+        );
+    }
+
     let creds = credentials::open_csv(opts.credentials_csv.clone());
     let sessions = Arc::new(SessionManager::with_credentials(creds.clone()));
     let frames = Arc::new(FrameStore::new());

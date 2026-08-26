@@ -151,6 +151,9 @@ JSON (default) or TOML (`.toml`). CLI flags override file fields.
 | `os_login_delay_ms` | Delay after connect before typing |
 | `auto_os_login` | Auto-run OS login when creds present |
 | `show_gui` | Also open local RustDesk GUI (debug; default false) |
+| `rendezvous_server` | Custom hbbs host (sets `custom-rendezvous-server`) |
+| `key` | Custom server public key |
+| `relay_server` | Optional hbbr host override |
 | `connect` | If present, start oneshot connect (same as `--api-connect`) |
 | `connect.peer_id` / `password` / `os_username` / `os_password` | Oneshot peer + passwords |
 

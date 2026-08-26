@@ -20,6 +20,15 @@ pub struct ApiConfigFile {
     /// When true, also start the normal RustDesk GUI (debug convenience).
     #[serde(default)]
     pub show_gui: Option<bool>,
+    /// Custom rendezvous / hbbs host (or host:port).
+    #[serde(default)]
+    pub rendezvous_server: Option<String>,
+    /// Public key for the custom server.
+    #[serde(default)]
+    pub key: Option<String>,
+    /// Optional relay host override (defaults to derived from rendezvous).
+    #[serde(default)]
+    pub relay_server: Option<String>,
     #[serde(default)]
     pub connect: Option<ApiConnectConfig>,
 }
@@ -58,6 +67,9 @@ pub struct ApiLaunchOptions {
     pub oneshot_connect: bool,
     /// Also show the normal RustDesk GUI (for debugging). Default false.
     pub show_gui: bool,
+    pub rendezvous_server: Option<String>,
+    pub key: Option<String>,
+    pub relay_server: Option<String>,
     // Track which CLI fields were explicitly provided.
     pub cli_bind: bool,
     pub cli_token: bool,
@@ -88,6 +100,9 @@ impl ApiLaunchOptions {
             os_password: None,
             oneshot_connect: false,
             show_gui: false,
+            rendezvous_server: None,
+            key: None,
+            relay_server: None,
             cli_bind: false,
             cli_token: false,
             cli_delay: false,
@@ -138,6 +153,15 @@ pub fn merge(file: Option<ApiConfigFile>, cli: ApiLaunchOptions) -> ApiLaunchOpt
         if let Some(v) = f.show_gui {
             out.show_gui = v;
         }
+        if let Some(v) = f.rendezvous_server.filter(|s| !s.is_empty()) {
+            out.rendezvous_server = Some(v);
+        }
+        if let Some(v) = f.key.filter(|s| !s.is_empty()) {
+            out.key = Some(v);
+        }
+        if let Some(v) = f.relay_server.filter(|s| !s.is_empty()) {
+            out.relay_server = Some(v);
+        }
         if let Some(c) = f.connect {
             out.oneshot_connect = true;
             if let Some(v) = c.peer_id.filter(|s| !s.is_empty()) {
@@ -184,6 +208,15 @@ pub fn merge(file: Option<ApiConfigFile>, cli: ApiLaunchOptions) -> ApiLaunchOpt
     }
     if cli.cli_show_gui {
         out.show_gui = cli.show_gui;
+    }
+    if cli.rendezvous_server.is_some() {
+        out.rendezvous_server = cli.rendezvous_server;
+    }
+    if cli.key.is_some() {
+        out.key = cli.key;
+    }
+    if cli.relay_server.is_some() {
+        out.relay_server = cli.relay_server;
     }
     if cli.oneshot_connect {
         out.oneshot_connect = true;
