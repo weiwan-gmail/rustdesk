@@ -60,7 +60,9 @@ if [ "${SKIP_JS:-0}" != "1" ] || [ ! -f "$WEB/js/dist/index.js" ]; then
   command -v yarn   >/dev/null || npm install -g yarn
   command -v protoc >/dev/null || npm install -g protoc
   command -v tsc    >/dev/null || npm install -g typescript
-  (cd "$WEB/js" && yarn install && yarn build)
+  # Yarn 1 ignores the patch's "**/@types/node" glob; pin before install.
+  "$HERE/pin-js-deps.sh" "$WEB/js/package.json"
+  (cd "$WEB/js" && rm -f yarn.lock && yarn install && yarn build)
 fi
 
 # --- 5. flutter build web -----------------------------------------------------
