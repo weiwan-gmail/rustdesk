@@ -66,17 +66,25 @@ if [ "${SKIP_JS:-0}" != "1" ] || [ ! -f "$WEB/js/dist/index.js" ]; then
     echo "!! protoc is required (install protobuf-compiler)"
     exit 1
   fi
-  # npm + overrides: Yarn 1 on GHA hoists @types/node@26, whose ffi.d.ts uses
-  # TS 5.2+ syntax that tsc 4.9 cannot parse.
+  # npm + overrides: Yarn 1 / npm on GHA otherwise hoist @types/node@26
+  # (ffi.d.ts needs TS 5.2+) and libsodium-wrappers@0.7.16 (ESM import of
+  # ./libsodium.mjs that vite 2.8 cannot resolve).
   (cd "$WEB/js" &&
     rm -f yarn.lock package-lock.json &&
     npm install &&
-    npm install --no-save --no-package-lock @types/node@16.18.68 &&
+    npm install --no-save --no-package-lock \
+      @types/node@16.18.68 libsodium@0.7.13 libsodium-wrappers@0.7.13 &&
     node -e "
-      const v = require('./node_modules/@types/node/package.json').version;
-      console.log('>> @types/node', v);
-      if (!String(v).startsWith('16.')) {
-        console.error('!! expected @types/node 16.x, got ' + v);
+      const nodeV = require('@types/node/package.json').version;
+      const wrapV = require('libsodium-wrappers/package.json').version;
+      const sodV = require('libsodium/package.json').version;
+      console.log('>> @types/node', nodeV, 'libsodium', sodV, 'wrappers', wrapV);
+      if (!String(nodeV).startsWith('16.')) {
+        console.error('!! expected @types/node 16.x, got ' + nodeV);
+        process.exit(1);
+      }
+      if (wrapV !== '0.7.13' || sodV !== '0.7.13') {
+        console.error('!! expected libsodium 0.7.13, got', sodV, wrapV);
         process.exit(1);
       }
     " &&
