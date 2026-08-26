@@ -157,6 +157,16 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "20"
+
+      - name: Install web-client build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler python-is-python3
+
       - name: Install Go
         run: |
           curl -sL https://go.dev/dl/go1.22.12.linux-amd64.tar.gz -o /tmp/go.tgz
@@ -173,6 +183,8 @@ jobs:
 
       - name: Build rustdesk-web and rustdesk-web-direct
         run: |
+          node -v
+          npm -v
           go version
           flutter --version
           ./deploy/build-web-helpers.sh

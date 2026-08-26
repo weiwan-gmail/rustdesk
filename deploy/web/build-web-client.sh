@@ -57,12 +57,40 @@ cp "$HERE/config.js" "$WEB/config.js"
 # --- 4. JS protocol stack -----------------------------------------------------
 if [ "${SKIP_JS:-0}" != "1" ] || [ ! -f "$WEB/js/dist/index.js" ]; then
   echo ">> building JS protocol stack"
-  command -v yarn   >/dev/null || npm install -g yarn
-  command -v protoc >/dev/null || npm install -g protoc
-  command -v tsc    >/dev/null || npm install -g typescript
-  # Yarn 1 ignores the patch's "**/@types/node" glob; pin before install.
+  if ! command -v python >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+    mkdir -p "$WORK_DIR/bin"
+    ln -sfn "$(command -v python3)" "$WORK_DIR/bin/python"
+    export PATH="$WORK_DIR/bin:$PATH"
+  fi
+  if ! command -v protoc >/dev/null; then
+    echo "!! protoc is required (install protobuf-compiler)"
+    exit 1
+  fi
+  # pin-js-deps.sh writes exact versions into package.json (Yarn 1 ignores
+  # glob resolutions). npm + overrides: GHA otherwise hoists @types/node@26
+  # (ffi.d.ts needs TS 5.2+) and libsodium-wrappers@0.7.16 (ESM import of
+  # ./libsodium.mjs that vite 2.8 cannot resolve).
   "$HERE/pin-js-deps.sh" "$WEB/js/package.json"
-  (cd "$WEB/js" && rm -f yarn.lock && yarn install && yarn build)
+  (cd "$WEB/js" &&
+    rm -f yarn.lock package-lock.json &&
+    npm install &&
+    npm install --no-save --no-package-lock \
+      @types/node@16.18.68 libsodium@0.7.13 libsodium-wrappers@0.7.13 &&
+    node -e "
+      const nodeV = require('@types/node/package.json').version;
+      const wrapV = require('libsodium-wrappers/package.json').version;
+      const sodV = require('libsodium/package.json').version;
+      console.log('>> @types/node', nodeV, 'libsodium', sodV, 'wrappers', wrapV);
+      if (!String(nodeV).startsWith('16.')) {
+        console.error('!! expected @types/node 16.x, got ' + nodeV);
+        process.exit(1);
+      }
+      if (wrapV !== '0.7.13' || sodV !== '0.7.13') {
+        console.error('!! expected libsodium 0.7.13, got', sodV, wrapV);
+        process.exit(1);
+      }
+    " &&
+    npm run build)
 fi
 
 # --- 5. flutter build web -----------------------------------------------------

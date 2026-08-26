@@ -21,6 +21,12 @@ dev["@types/node"] = "16.18.68"
 res = data.setdefault("resolutions", {})
 res["@types/node"] = "16.18.68"
 res["**/@types/node"] = "16.18.68"
+res["libsodium"] = "0.7.13"
+res["libsodium-wrappers"] = "0.7.13"
+overrides = data.setdefault("overrides", {})
+overrides["@types/node"] = "16.18.68"
+overrides["libsodium"] = "0.7.13"
+overrides["libsodium-wrappers"] = "0.7.13"
 p.write_text(json.dumps(data, indent=2) + "\n")
 print(f">> pinned JS deps in {p}")
 PY

@@ -35,7 +35,11 @@ COPY fetch-codecs.sh /tmp/fetch-codecs.sh
 RUN bash /tmp/fetch-codecs.sh /src/flutter/web
 WORKDIR /src/flutter/web/js
 COPY pin-js-deps.sh /tmp/pin-js-deps.sh
-RUN bash /tmp/pin-js-deps.sh package.json && rm -f yarn.lock && yarn install && yarn build
+RUN bash /tmp/pin-js-deps.sh package.json \
+ && rm -f yarn.lock package-lock.json \
+ && npm install \
+ && npm install --no-save --no-package-lock @types/node@16.18.68 libsodium@0.7.13 libsodium-wrappers@0.7.13 \
+ && npm run build
 
 # ---- flutter build web -------------------------------------------------------
 FROM debian:bookworm-slim AS flutter
