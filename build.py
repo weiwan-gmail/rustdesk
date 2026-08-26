@@ -47,8 +47,14 @@ def system2(cmd):
         sys.exit(-1)
 
 
+# Capture at import time. Linux packaging does os.chdir('flutter') before
+# staging helpers; a relative __file__ (python3 ./build.py on older CPython)
+# would then resolve under flutter/ and miss deploy/web-helpers/.
+_REPO_ROOT = Path(os.path.abspath(__file__)).parent
+
+
 def repo_root():
-    return Path(__file__).resolve().parent
+    return _REPO_ROOT
 
 
 def web_helpers_triple():
