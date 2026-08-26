@@ -63,6 +63,10 @@ mod ui_cm_interface;
 mod ui_interface;
 mod ui_session_interface;
 
+#[cfg(feature = "api-server")]
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub mod api_server;
+
 mod hbbs_http;
 
 #[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]

@@ -63,7 +63,19 @@ pub fn core_main() -> Option<Vec<String>> {
             ]
             .contains(&arg.as_str())
             {
-                _is_flutter_invoke_new_connection = true;
+                // Independent controller modes must never hand off to an existing GUI.
+                let independent = std::env::args().any(|a| {
+                    matches!(
+                        a.as_str(),
+                        "--api-server"
+                            | "--api-connect"
+                            | "--api-config"
+                            | "--headless-connect"
+                    )
+                });
+                if !independent {
+                    _is_flutter_invoke_new_connection = true;
+                }
             }
             if arg == "--elevate" {
                 _is_elevate = true;
@@ -724,6 +736,49 @@ pub fn core_main() -> Option<Vec<String>> {
                 crate::flutter::connection_manager::start_cm_no_ui();
             }
             return None;
+        } else if args[0] == "--api-server"
+            || args[0] == "--api-connect"
+            || args[0] == "--api-config"
+            || args[0] == "--headless-connect"
+        {
+            #[cfg(feature = "api-server")]
+            {
+                // Independent outbound controller process: never hand off to an
+                // *existing* GUI. Optionally show *this* process's own GUI for debug.
+                let opts = crate::api_server::launch_options_from_args(&args);
+                if opts.show_gui {
+                    log::info!(
+                        "starting api-server in background with local GUI on {}",
+                        opts.bind
+                    );
+                    println!(
+                        "RustDesk API listening on http://{} (GUI enabled for debugging)",
+                        opts.bind
+                    );
+                    if let Err(e) = std::thread::Builder::new()
+                        .name("api-server".into())
+                        .spawn(move || crate::api_server::run(opts))
+                    {
+                        log::error!("failed to spawn api-server thread: {e}");
+                        eprintln!("failed to spawn api-server thread: {e}");
+                        return None;
+                    }
+                    // Drop API CLI tokens so Sciter/Flutter start a normal main window.
+                    args.clear();
+                    // Fall through to return Some(...) and start local GUI.
+                } else {
+                    crate::api_server::run(opts);
+                    return None;
+                }
+            }
+            #[cfg(not(feature = "api-server"))]
+            {
+                eprintln!(
+                    "{} requires building with --features api-server",
+                    args[0]
+                );
+                return None;
+            }
         } else if args[0] == "--whiteboard" {
             #[cfg(not(any(target_os = "android", target_os = "ios")))]
             {
