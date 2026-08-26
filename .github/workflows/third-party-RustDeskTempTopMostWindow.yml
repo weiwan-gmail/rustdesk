@@ -26,12 +26,18 @@ on:
             required: true
             type: string
             default: 'Windows10'
+        enabled:
+            description: 'When false, skip this overlay build (used by slim CI).'
+            required: false
+            type: boolean
+            default: true
 
 env:
   project_path: WindowInjection/WindowInjection.vcxproj
 
 jobs:
   build-RustDeskTempTopMostWindow:
+    if: ${{ inputs.enabled }}
     runs-on: ${{ inputs.target }}
     strategy:
         fail-fast: false

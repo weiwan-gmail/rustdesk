@@ -144,3 +144,19 @@ Android/iOS runners. Free-tier GitHub-hosted runner concurrency limits
   status on a transient hiccup while the underlying run keeps going fine —
   don't treat a `gh run watch` failure as the workflow run having failed;
   re-check via `gh run view`.
+
+## Gotcha 6: PR / develop CI is a slim matrix
+
+`flutter-ci.yml` (pull requests and pushes to `develop`/`master`) passes
+`full-build: false` into `flutter-build.yml`. That keeps only the common
+packages:
+
+- Windows x64
+- Linux amd64 + arm64
+- macOS arm64
+- Android arm64
+
+Nightly and tag workflows leave `full-build` at its default (`true`) and
+still build the full matrix (Windows ARM64, macOS Intel, Android armv7/x86_64,
+Sciter, iOS, AppImage, Flatpak, …). Skipped jobs on a PR run are expected;
+they are not a workflow failure.

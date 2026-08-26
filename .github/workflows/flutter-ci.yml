@@ -28,3 +28,7 @@ jobs:
       # Publish downloadable builds (incl. Android APKs) on pushes to master/develop,
       # but keep pull_request runs artifact-free (build verification only).
       upload-artifact: ${{ github.event_name == 'push' }}
+      # PR / develop / master: only the common packages (Windows x64, Linux
+      # amd64+arm64, macOS arm64, Android arm64). Nightly and tag workflows
+      # keep the default full-build: true.
+      full-build: false
