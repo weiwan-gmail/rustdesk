@@ -57,10 +57,23 @@ cp "$HERE/config.js" "$WEB/config.js"
 # --- 4. JS protocol stack -----------------------------------------------------
 if [ "${SKIP_JS:-0}" != "1" ] || [ ! -f "$WEB/js/dist/index.js" ]; then
   echo ">> building JS protocol stack"
-  command -v yarn   >/dev/null || npm install -g yarn
-  command -v protoc >/dev/null || npm install -g protoc
-  command -v tsc    >/dev/null || npm install -g typescript
-  (cd "$WEB/js" && yarn install && yarn build)
+  if ! command -v python >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+    mkdir -p "$WORK_DIR/bin"
+    ln -sfn "$(command -v python3)" "$WORK_DIR/bin/python"
+    export PATH="$WORK_DIR/bin:$PATH"
+  fi
+  command -v yarn >/dev/null || npm install -g yarn
+  if ! command -v protoc >/dev/null; then
+    echo "!! protoc is required (install protobuf-compiler)"
+    exit 1
+  fi
+  # The 2024 snapshot ships a Yarn Berry lockfile. Yarn 1 cannot apply
+  # package.json resolutions on top of it and may pull an unusable @types/node.
+  (cd "$WEB/js" && rm -f yarn.lock && yarn install && \
+    if [ -f node_modules/@types/node/ffi.d.ts ]; then
+      echo "!! refusing ancient @types/node (ffi.d.ts present)"
+      exit 1
+    fi && yarn build)
 fi
 
 # --- 5. flutter build web -----------------------------------------------------
