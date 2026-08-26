@@ -62,18 +62,25 @@ if [ "${SKIP_JS:-0}" != "1" ] || [ ! -f "$WEB/js/dist/index.js" ]; then
     ln -sfn "$(command -v python3)" "$WORK_DIR/bin/python"
     export PATH="$WORK_DIR/bin:$PATH"
   fi
-  command -v yarn >/dev/null || npm install -g yarn
   if ! command -v protoc >/dev/null; then
     echo "!! protoc is required (install protobuf-compiler)"
     exit 1
   fi
-  # The 2024 snapshot ships a Yarn Berry lockfile. Yarn 1 cannot apply
-  # package.json resolutions on top of it and may pull an unusable @types/node.
-  (cd "$WEB/js" && rm -f yarn.lock && yarn install && \
-    if [ -f node_modules/@types/node/ffi.d.ts ]; then
-      echo "!! refusing ancient @types/node (ffi.d.ts present)"
-      exit 1
-    fi && yarn build)
+  # npm + overrides: Yarn 1 on GHA hoists @types/node@26, whose ffi.d.ts uses
+  # TS 5.2+ syntax that tsc 4.9 cannot parse.
+  (cd "$WEB/js" &&
+    rm -f yarn.lock package-lock.json &&
+    npm install &&
+    npm install --no-save --no-package-lock @types/node@16.18.68 &&
+    node -e "
+      const v = require('./node_modules/@types/node/package.json').version;
+      console.log('>> @types/node', v);
+      if (!String(v).startsWith('16.')) {
+        console.error('!! expected @types/node 16.x, got ' + v);
+        process.exit(1);
+      }
+    " &&
+    npm run build)
 fi
 
 # --- 5. flutter build web -----------------------------------------------------

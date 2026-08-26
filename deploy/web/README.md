@@ -105,7 +105,7 @@ cd deploy/web/localserver
 - `js/src/globals.js`：新增 `app_name`（读 `config.js` 的 `appName`，默认 `RustDesk`）。
 - `web/yuv.js`：修复软件解码 worker——原版本把 `{display, frame}` 误当 frame 解码且回包丢失 display，导致无 WebGL 环境下黑屏。
 - `lib/web/bridge.dart`：补齐 web 首页/连接/会话路径上缺失的桥方法（`mainGetAppNameSync`、`mainIsOptionFixed` 等，上游重构时留下的 `UnimplementedError` 会让首页直接灰屏）；修正 `SetByName` 大小写笔误。
-- `js/package.json`：固定 `libsodium`/`libsodium-wrappers@0.7.13`（新版 ESM 布局与 vite 2.8 不兼容）、`typescript@4.9.5` 与 `@types/node@16.18.68`（2024 快照的 Yarn Berry lockfile 在 Yarn 1 下会解析出 TS 无法解析的类型包）。`tsconfig.json` 限制 `typeRoots` 为项目内 `@types`。
+- `js/package.json`：固定 `libsodium`/`libsodium-wrappers@0.7.13`（新版 ESM 布局与 vite 2.8 不兼容）、`typescript@4.9.5` 与 `@types/node@16.18.68`（2026 年的 `@types/node@26` 含 `ffi.d.ts`，其 TS 5.2+ 语法无法被 tsc 4.9 解析）。构建用 npm `overrides` 钉死 16.x。
 - `index.html`：加载 `config.js`。
 
 解码器包（原 `web_deps.tar.gz` 已 404）由 `fetch-codecs.sh` 重建：ogv.js 1.8.6 官方 release zip（含 SIMD，npm 包没有）、npm `yuv-canvas@1.2.6`（用 esbuild 打成浏览器 IIFE）、npm `opusscript@0.1.1` 生成 `libopus.js` 音频 worker。
