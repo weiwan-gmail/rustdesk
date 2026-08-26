@@ -160,3 +160,10 @@ Nightly and tag workflows leave `full-build` at its default (`true`) and
 still build the full matrix (Windows ARM64, macOS Intel, Android armv7/x86_64,
 Sciter, iOS, AppImage, Flatpak, …). Skipped jobs on a PR run are expected;
 they are not a workflow failure.
+
+Manual **Run workflow** on `Full Flutter CI` is the slim-build button:
+it uses the same common-package matrix, defaults to publishing a prerelease
+(`upload-artifact: true`, tag `nightly`), and accepts an `upload-tag`
+override if you do not want to overwrite `nightly`. Pull requests still
+do not publish. `Flutter Nightly Build` remains the full-matrix manual
+trigger.
