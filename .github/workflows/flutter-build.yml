@@ -183,6 +183,8 @@ jobs:
 
       - name: Build rustdesk-web and rustdesk-web-direct
         run: |
+          node -v
+          npm -v
           go version
           flutter --version
           ./deploy/build-web-helpers.sh
