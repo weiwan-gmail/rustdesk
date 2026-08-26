@@ -192,8 +192,23 @@ impl SessionManager {
 
         std::thread::sleep(Duration::from_millis(200));
 
-        if let Some(code) = req.two_factor.clone() {
-            let _ = code;
+        if !password.is_empty() {
+            let s = (*session).clone();
+            let p = password.clone();
+            std::thread::spawn(move || {
+                for _ in 0..400 {
+                    match s.ui_handler.snapshot().status {
+                        SessionStatus::WaitingPassword => {
+                            s.login(String::new(), String::new(), p, true);
+                            return;
+                        }
+                        SessionStatus::Connected
+                        | SessionStatus::Error
+                        | SessionStatus::Disconnected => return,
+                        _ => std::thread::sleep(Duration::from_millis(100)),
+                    }
+                }
+            });
         }
 
         if auto_os && (!os_user.is_empty() || !os_pass.is_empty()) {
@@ -203,6 +218,7 @@ impl SessionManager {
                 activate: true,
                 delay_ms,
                 username_first: true,
+                ctrl_alt_del: true,
             };
             os_login::spawn_after_connect((*session).clone(), params);
         }

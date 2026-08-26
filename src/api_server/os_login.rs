@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use super::handler::{HeadlessHandler, OsLoginStatus, SessionStatus};
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct OsLoginParams {
     #[serde(default)]
     pub username: String,
@@ -20,6 +20,22 @@ pub struct OsLoginParams {
     pub delay_ms: u64,
     #[serde(default = "default_true")]
     pub username_first: bool,
+    /// Send Ctrl+Alt+Delete first (common on Windows lock: "Press Ctrl+Alt+Delete to unlock").
+    #[serde(default = "default_true")]
+    pub ctrl_alt_del: bool,
+}
+
+impl Default for OsLoginParams {
+    fn default() -> Self {
+        Self {
+            username: String::new(),
+            password: String::new(),
+            activate: true,
+            delay_ms: 2500,
+            username_first: true,
+            ctrl_alt_del: true,
+        }
+    }
 }
 
 fn default_true() -> bool {
@@ -42,11 +58,17 @@ pub fn perform(session: &Session<HeadlessHandler>, params: &OsLoginParams) -> Re
     }
     set_status(session, OsLoginStatus::Running, None);
     log::info!(
-        "os-login begin activate={} user_len={} pass_len={}",
+        "os-login begin cad={} activate={} user_len={} pass_len={}",
+        params.ctrl_alt_del,
         params.activate,
         params.username.len(),
         params.password.len()
     );
+
+    if params.ctrl_alt_del {
+        session.ctrl_alt_del();
+        thread::sleep(Duration::from_millis(1800));
+    }
 
     if params.activate {
         session.input_os_password(String::new(), true);
@@ -105,6 +127,9 @@ pub fn spawn_after_connect(session: Session<HeadlessHandler>, params: OsLoginPar
                         set_status(&session, OsLoginStatus::Failed, Some(e));
                     }
                     return;
+                }
+                SessionStatus::WaitingPassword | SessionStatus::Waiting2fa => {
+                    // Keep pending until RustDesk auth completes.
                 }
                 SessionStatus::Error | SessionStatus::Disconnected => {
                     set_status(

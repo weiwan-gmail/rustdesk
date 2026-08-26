@@ -72,9 +72,11 @@ CSV columns: `peer_id,ip,os_username,os_password,rustdesk_password` (empty colum
 
 ### OS login sequence
 
-After connect (when `auto_os_login` is true and OS creds exist): wait `os_login_delay_ms` (default 2500), optionally click-activate the login UI, then type `username` → `Tab` → `password` → `Enter`. Session JSON exposes `os_login_status`: `idle|pending|running|done|failed`.
+After connect (when `auto_os_login` is true and OS creds exist): wait `os_login_delay_ms` (default 2500), send **Ctrl+Alt+Delete** (Windows lock SAS), optionally click-activate, then type `username` → `Tab` → `password` → `Enter`. Session JSON exposes `os_login_status`: `idle|pending|running|done|failed`.
 
-Manual trigger: `POST /api/v1/sessions/{id}/os-login`.
+If RustDesk asks for a connection password, the API submits `password` / CSV `rustdesk_password` automatically.
+
+Manual trigger: `POST /api/v1/sessions/{id}/os-login` (`ctrl_alt_del` defaults true).
 
 ## Endpoints
 
@@ -119,6 +121,7 @@ Coordinates for mouse actions are **remote pixel** coordinates matching the scre
   "username": "Administrator",
   "password": "WinPass123",
   "activate": true,
+  "ctrl_alt_del": true,
   "delay_ms": 0,
   "username_first": true
 }
