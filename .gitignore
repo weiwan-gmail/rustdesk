@@ -44,6 +44,9 @@ flatpak/repo/**
 flatpak/*.flatpak
 # bridge file
 lib/generated_bridge.dart
+# Vendored v1 web client assets (root *png/*svg would otherwise drop them)
+!deploy/v1/src/**/*.png
+!deploy/v1/src/**/*.svg
 # vscode devcontainer
 .gitconfig
 .vscode-server/

@@ -1,0 +1,15 @@
+# Keep Docker context small: vendored source + web runtime files only.
+**/.build
+**/dist
+**/data
+**/.dart_tool
+**/node_modules
+**/.git
+web/localserver/rustdesk-web
+web/localserver/rustdesk-web-*
+web/localserver/rustdesk-web.exe
+web-direct/rustdesk-web-direct
+web-direct/rustdesk-web-direct-*
+web-direct/rustdesk-web-direct.exe
+src/flutter/build
+src/flutter/web/js/dist
