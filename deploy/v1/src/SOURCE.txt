@@ -1,0 +1,10 @@
+Vendored from rustdesk commit 96f41fcc02dd076bff12053430b90ad2fc43a283
+(v1.2.4 era, Flutter 3.19.6).
+
+In-tree changes vs that commit:
+- privatization, TS 6.0.3, Vite 7.3.6, UnimplementedError fixes (was 0001)
+- IP direct-connect helper _startDirect (was 0002), gated by
+  window.RUSTDESK_CONFIG.direct so server-mode builds stay rendezvous-only
+
+Codecs (ogvjs, yuv-canvas, libopus.js) are fetched at build time by
+fetch-codecs.sh and are not committed.

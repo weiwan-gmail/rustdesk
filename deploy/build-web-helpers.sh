@@ -9,8 +9,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="$ROOT/deploy/web-helpers"
-WEB="$ROOT/deploy/web"
-DIRECT="$ROOT/deploy/web-direct"
+WEB="$ROOT/deploy/v1/web"
+DIRECT="$ROOT/deploy/v1/web-direct"
 
 echo ">> building rustdesk-web (server mode)"
 "$WEB/build-web-client.sh"
