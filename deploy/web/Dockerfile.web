@@ -37,8 +37,9 @@ COPY pin-js-deps.sh /tmp/pin-js-deps.sh
 RUN bash /tmp/pin-js-deps.sh package.json \
  && rm -f yarn.lock package-lock.json \
  && npm install \
- && npm install --no-save --no-package-lock typescript@6.0.3 @types/node@26.3.0 libsodium@0.7.13 libsodium-wrappers@0.7.13 \
- && npm run build
+ && npm install --no-save --no-package-lock typescript@6.0.3 @types/node@26.3.0 vite@7.3.6 libsodium@0.7.13 libsodium-wrappers@0.7.13 \
+ && npm run build \
+ && test -f dist/index.js && test -f dist/vendor.js
 
 # ---- flutter build web -------------------------------------------------------
 FROM debian:bookworm-slim AS flutter

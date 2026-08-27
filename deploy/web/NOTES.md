@@ -21,10 +21,11 @@
 这些是「老代码 + 新工具链」的典型位腐烂（bitrot），`fetch-codecs.sh` 和补丁里的 `package.json` 固定就是为了解决它们：
 
 1. **`@types/node` / TypeScript**：`ts-proto > protobufjs` 间接依赖 `@types/node`。2024 年的 `typescript@4.4`/`4.9` 无法解析 2026 年 `@types/node@26` 的 `ffi.d.ts`（需要 TS 5.2+）→ `TS1005`；当时只能钉死 `16.18.68`。现在协议栈钉 **`typescript@6.0.3`**（最后一代 JS 编译器，给 TS 7 铺路；7.0 还没有 Compiler API），因此可以改钉当前的 `@types/node@26.3.0`（npm `ts6.0` dist-tag）。`skipLibCheck` 挡不住语法错误，所以仍用直接依赖 + npm `overrides`。`moduleResolution` 从已弃用的 `Node`（node10）改为 `bundler`，不要用 `"ignoreDeprecations": "6.0"`。`tsconfig` 显式 `"types": ["node"]`（TS 6 默认 `types: []`；ts-proto 生成代码会读 `globalThis.Buffer`）。TS 6 的 DOM `WebSocket.send` 要 `BufferSource`，protobuf/sodium 的 `Uint8Array` 默认 `ArrayBufferLike`，所以 `websock.ts` 发送处做类型断言（不改线上字节）。`pin-js-deps.sh` 在安装前强制写入这些钉死版本。
-2. **`libsodium`/`libsodium-wrappers`**：`^0.7.9` 解析到 0.7.16，其 ESM 布局里 `libsodium-wrappers.mjs` 相对导入 `./libsodium.mjs`，但该文件在另一个包里，vite 2.8 解析失败。**解法**：精确固定 `0.7.13`（2024-05 时代的版本）。注意 yarn1 的 `resolutions` 用 `**/libsodium` 没生效，直接改 `dependencies` 里的版本号最可靠。
-3. **`yarn.lock` 与 `package.json` 不同步**：该提交的 lockfile 本来就是旧的，`--frozen-lockfile` 会失败。**不要用** `--frozen-lockfile`，让 yarn 重新解析。
-4. **`python` vs `python3`**：`gen_js_from_hbb.py`/`ts_proto.py` 用 `python` 调用。新系统只有 `python3`，需软链或 `python-is-python3`。
-5. **`web_deps.tar.gz` 已 404**：官方解码器包没了。重建来源：
+2. **`libsodium`/`libsodium-wrappers`**：`^0.7.9` 解析到 0.7.16，其 ESM 布局里 `libsodium-wrappers.mjs` 相对导入 `./libsodium.mjs`，但该文件在另一个包里。**解法**：精确固定 `0.7.13`（2024-05 时代的版本），`vite.config.js` 再把两个包别名到 CJS `dist/modules/`。注意 yarn1 的 `resolutions` 用 `**/libsodium` 没生效，直接改 `dependencies` 里的版本号最可靠。
+3. **Vite 与 `vendor.js`**：Flutter `index.html` 写死 `js/dist/index.js` + `js/dist/vendor.js`。Vite **2.8** 默认会拆出 `vendor`；**2.9** 起没有这个默认，**7** 删了 `splitVendorChunkPlugin`。必须在 `build.rollupOptions.output.manualChunks` 里用函数形式把 `node_modules` 打进 `vendor`，并保持 `entryFileNames`/`chunkFileNames` 为 `[name].js`（无 hash）。本栈钉 **`vite@7.3.6`**，不要上 Vite 8（Rolldown，object-form `manualChunks` 已移除，CJS 互操作也变了）。
+4. **`yarn.lock` 与 `package.json` 不同步**：该提交的 lockfile 本来就是旧的，`--frozen-lockfile` 会失败。**不要用** `--frozen-lockfile`，让 yarn 重新解析。
+5. **`python` vs `python3`**：`gen_js_from_hbb.py`/`ts_proto.py` 用 `python` 调用。新系统只有 `python3`，需软链或 `python-is-python3`。
+6. **`web_deps.tar.gz` 已 404**：官方解码器包没了。重建来源：
    - **ogv.js**：npm 包**没有 SIMD 构建**（`codec.js` 注释明说 "yarn add has no simd"），必须用 GitHub release 的 `ogvjs-1.8.6.zip`（仓库已转移到 `bvibber/ogv.js`）。现代浏览器 WASM SIMD 可用时会加载 `OGVDecoderVideoVP9SIMDW`，缺了它视频直接黑屏。
    - **yuv-canvas**：npm 包入口是 CommonJS（`require('./FrameSink.js')`），浏览器直接 404/报错。**解法**：`esbuild --bundle --format=iife --global-name=YUVCanvas` 打成浏览器 IIFE。
    - **`libopus.js`**：原是定制 emscripten 构建。用 npm `opusscript` 内联 + 一个约 30 行的 worker 包装（协议：收 `{channels, sampleRate}` 初始化，收 opus 包，回 PCM Float32）。
