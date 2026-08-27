@@ -113,8 +113,11 @@ export default class Websock {
     });
   }
 
+  // Default read timeout matches the native client's READ_TIMEOUT (18s,
+  // libs/hbb_common/src/config.rs): the peer can take a while to join the
+  // relay after hbbs notifies it.
   async next(
-    timeout = 12000
+    timeout = 18000
   ): Promise<rendezvous.RendezvousMessage | message.Message> {
     const func = (
       resolve: (value: rendezvous.RendezvousMessage | message.Message) => void,

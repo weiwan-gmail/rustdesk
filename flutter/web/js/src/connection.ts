@@ -66,6 +66,7 @@ export default class Connection {
 
   async start(id: string) {
     try {
+      id = parseIdServerKey(id);
       // IP→/direct only when the delivery opts in (web-direct sets direct: true).
       if (CONF.direct && isIpTarget(id)) {
         await this._startDirect(id);
@@ -982,6 +983,26 @@ export default class Connection {
   }
 }
 
+// The connection page accepts "<id>@<server>?key=<key>" (same syntax as the
+// native client). Split it, persisting server/key like the settings page does.
+function parseIdServerKey(id: string): string {
+  let t = id.trim();
+  const qi = t.indexOf("?");
+  if (qi >= 0) {
+    const params = new URLSearchParams(t.substring(qi + 1));
+    const key = params.get("key");
+    if (key) localStorage.setItem("key", key);
+    t = t.substring(0, qi);
+  }
+  const at = t.indexOf("@");
+  if (at >= 0) {
+    const server = t.substring(at + 1);
+    if (server) localStorage.setItem("custom-rendezvous-server", server);
+    t = t.substring(0, at);
+  }
+  return t;
+}
+
 function getDefaultUri(isRelay: Boolean = false): string {
   const host = localStorage.getItem("custom-rendezvous-server");
   return getrUriFromRs(host || CONF.server || "", isRelay);
@@ -1006,7 +1027,12 @@ function getrUriFromRs(uri: string, isRelay: Boolean = false, roffset: number = 
     host = uri.substring(0, i);
     port = parseInt(uri.substring(i + 1)) || 0;
   }
-  const isIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(host) || host.indexOf(":") >= 0;
+  // "localhost" resolves to a loopback IP; the native client treats it as an
+  // IP (direct ports), not as a domain behind a reverse proxy.
+  const isIp =
+    /^(\d{1,3}\.){3}\d{1,3}$/.test(host) ||
+    host.indexOf(":") >= 0 ||
+    host === "localhost";
   if (!isIp && !port) {
     return wsSchema() + host + wsPath;
   }

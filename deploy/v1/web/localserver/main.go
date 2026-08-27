@@ -114,7 +114,9 @@ func wsUpstream(server string, relay bool) string {
 		host, portStr = server, ""
 	}
 	port, _ := strconv.Atoi(portStr)
-	isIP := net.ParseIP(strings.Trim(host, "[]")) != nil
+	// "localhost" resolves to a loopback IP; treat it as IP-like so the WS
+	// ports are derived (21118/21119) instead of assuming a reverse proxy.
+	isIP := net.ParseIP(strings.Trim(host, "[]")) != nil || host == "localhost"
 	if !isIP && port == 0 {
 		// domain without port: reverse proxy on 80/443 with /ws/* paths;
 		// the incoming path is preserved by wsProxy.
