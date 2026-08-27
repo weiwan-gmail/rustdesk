@@ -47,6 +47,8 @@ lib/generated_bridge.dart
 # Vendored v1 web client assets (root *png/*svg would otherwise drop them)
 !deploy/v1/src/**/*.png
 !deploy/v1/src/**/*.svg
+# v2 web client icons (same reason)
+!flutter/web/icons/*.png
 # vscode devcontainer
 .gitconfig
 .vscode-server/
@@ -58,4 +60,17 @@ examples/**/target/
 vcpkg_installed
 flutter/lib/generated_plugin_registrant.dart
 libsciter.dylib
-flutter/web/
+# flutter/web/ is tracked again: it hosts the v2 web client (see deploy/v2).
+# ...but not its build artifacts / fetched codec bundles:
+flutter/web/js/node_modules/
+flutter/web/js/dist/
+flutter/web/js/package-lock.json
+flutter/web/js/src/gen_js_from_hbb.ts
+flutter/web/js/src/message.ts
+flutter/web/js/src/rendezvous.ts
+flutter/web/ogvjs-*/
+flutter/web/yuv-canvas-*.js
+flutter/web/libopus.js
+deploy/v2/web/dist/
+deploy/v2/web/.build/
+deploy/v2/web/data/
