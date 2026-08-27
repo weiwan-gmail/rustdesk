@@ -37,7 +37,7 @@ if [ "${SKIP_JS:-0}" != "1" ] || [ ! -f "$WEB/js/dist/index.js" ]; then
     exit 1
   fi
   (cd "$WEB/js" &&
-    rm -f yarn.lock package-lock.json &&
+    rm -f package-lock.json &&
     npm install &&
     npm install --no-save --no-package-lock \
       typescript@6.0.3 @types/node@26.3.0 vite@7.3.6 \
@@ -87,6 +87,14 @@ echo ">> flutter build web --base-href $BASE_HREF"
 echo ">> staging static assets"
 cp -r "$SRC/flutter/build/web/." "$STATIC/"
 cp "$HERE/config.js" "$STATIC/config.js"
+# Flutter copies web/.gitignore into the build output; restore the placeholder
+# ignore so staged assets stay untracked.
+cat > "$STATIC/.gitignore" <<'EOF'
+# everything here is build output except this placeholder pair
+*
+!.gitignore
+!index.html
+EOF
 
 build_bin() { # <goos> <goarch> <suffix>
   local out="$HERE/rustdesk-web-direct$3"

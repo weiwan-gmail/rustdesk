@@ -45,7 +45,7 @@ if [ "${SKIP_JS:-0}" != "1" ] || [ ! -f "$WEB/js/dist/index.js" ]; then
   # Vendored package.json already pins typescript 6.0.3, vite 7.3.6,
   # libsodium 0.7.13, and @types/node 26.x. Re-assert after npm install.
   (cd "$WEB/js" &&
-    rm -f yarn.lock package-lock.json &&
+    rm -f package-lock.json &&
     npm install &&
     npm install --no-save --no-package-lock \
       typescript@6.0.3 @types/node@26.3.0 vite@7.3.6 \

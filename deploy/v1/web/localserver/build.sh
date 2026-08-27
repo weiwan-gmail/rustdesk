@@ -15,6 +15,14 @@ fi
 
 echo ">> staging static assets"
 cp -r "$DIST/." "$HERE/static/"
+# Flutter copies web/.gitignore into the build output; restore the placeholder
+# ignore so staged assets stay untracked.
+cat > "$HERE/static/.gitignore" <<'EOF'
+# everything here is build output except this placeholder pair
+*
+!.gitignore
+!index.html
+EOF
 
 build() { # <goos> <goarch> <suffix>
   local out="$HERE/rustdesk-web$3"
