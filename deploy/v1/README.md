@@ -10,4 +10,5 @@ web-direct/   direct-mode delivery (IP → /direct, no hbbs/hbbr)
 
 `src/` is shared. Direct mode is a runtime flag (`RUSTDESK_CONFIG.direct`), not a second source tree. Server-mode `config.js` omits the flag, so an IP typed as an ID still goes to rendezvous (same as the old 0001-only build).
 
-A v2 tree, when started, should be a copy of this layout (`deploy/v2/...`), not a merge back into `develop`'s `flutter/`.
+v2 lives at `deploy/v2`: it builds the repository's current `flutter/` tree
+(web root at `flutter/web/`) instead of a vendored snapshot.
