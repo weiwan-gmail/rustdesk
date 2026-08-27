@@ -49,6 +49,10 @@ if ! grep -q '"moduleResolution": "bundler"' "$WEB/js/tsconfig.json"; then
   echo "!! patch did not set tsconfig moduleResolution to bundler"
   exit 1
 fi
+if ! grep -q 'manualChunks' "$WEB/js/vite.config.js"; then
+  echo "!! patch did not restore Vite vendor chunk (manualChunks)"
+  exit 1
+fi
 if ! grep -q _startDirect "$WEB/js/src/connection.ts"; then
   echo ">> applying 0002-direct-connect.patch"
   (cd "$SRC" && git --git-dir=/dev/null --work-tree=. apply "$HERE/patches/0002-direct-connect.patch") \
@@ -72,21 +76,23 @@ if [ "${SKIP_JS:-0}" != "1" ] || [ ! -f "$WEB/js/dist/index.js" ]; then
     exit 1
   fi
   # pin-js-deps.sh writes exact versions into package.json (Yarn 1 ignores
-  # glob resolutions). npm + overrides: pin typescript 6.0.3 (not 7.x) and a
-  # current @types/node that 6.0.3 can parse. libsodium-wrappers@0.7.16
-  # ESM-imports ./libsodium.mjs that vite 2.8 cannot resolve.
+  # glob resolutions). npm + overrides: pin typescript 6.0.3 (not 7.x), vite
+  # 7.3.6 (not 8), and a current @types/node that 6.0.3 can parse.
+  # libsodium-wrappers@0.7.16 ESM-imports ./libsodium.mjs; stay on 0.7.13.
   "$WEB_DIR/pin-js-deps.sh" "$WEB/js/package.json"
   (cd "$WEB/js" &&
     rm -f yarn.lock package-lock.json &&
     npm install &&
     npm install --no-save --no-package-lock \
-      typescript@6.0.3 @types/node@26.3.0 libsodium@0.7.13 libsodium-wrappers@0.7.13 &&
+      typescript@6.0.3 @types/node@26.3.0 vite@7.3.6 \
+      libsodium@0.7.13 libsodium-wrappers@0.7.13 &&
     node -e "
       const tsV = require('typescript/package.json').version;
       const nodeV = require('@types/node/package.json').version;
+      const viteV = require('vite/package.json').version;
       const wrapV = require('libsodium-wrappers/package.json').version;
       const sodV = require('libsodium/package.json').version;
-      console.log('>> typescript', tsV, '@types/node', nodeV, 'libsodium', sodV, 'wrappers', wrapV);
+      console.log('>> typescript', tsV, '@types/node', nodeV, 'vite', viteV, 'libsodium', sodV, 'wrappers', wrapV);
       if (tsV !== '6.0.3') {
         console.error('!! expected typescript 6.0.3, got ' + tsV);
         process.exit(1);
@@ -95,12 +101,21 @@ if [ "${SKIP_JS:-0}" != "1" ] || [ ! -f "$WEB/js/dist/index.js" ]; then
         console.error('!! expected @types/node 26.x, got ' + nodeV);
         process.exit(1);
       }
+      if (viteV !== '7.3.6') {
+        console.error('!! expected vite 7.3.6, got ' + viteV);
+        process.exit(1);
+      }
       if (wrapV !== '0.7.13' || sodV !== '0.7.13') {
         console.error('!! expected libsodium 0.7.13, got', sodV, wrapV);
         process.exit(1);
       }
     " &&
-    npm run build)
+    npm run build &&
+    if [ ! -f dist/index.js ] || [ ! -f dist/vendor.js ]; then
+      echo '!! expected dist/index.js and dist/vendor.js (Flutter index.html hardcodes both)'
+      ls -la dist || true
+      exit 1
+    fi)
 fi
 
 # --- 5. flutter build web -----------------------------------------------------

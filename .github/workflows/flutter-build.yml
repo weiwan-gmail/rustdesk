@@ -160,7 +160,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Install web-client build deps
         run: |
@@ -2253,8 +2253,11 @@ jobs:
           npm install protoc -g
           # Install protoc first, see: https://google.github.io/proto-lens/installing-protoc.html
           npm install ts-proto
-          # Only works with vite <= 2.8, see: https://github.com/vitejs/vite/blob/main/docs/guide/build.md#chunking-strategy
-          npm install vite@2.8
+          # Disabled job (if: False). Historical note: Flutter index.html
+          # hardcodes js/dist/index.js + vendor.js. Vite 7 restores that split
+          # via build.rollupOptions.output.manualChunks (splitVendorChunkPlugin
+          # was removed in Vite 7). Do not use Vite 8 (Rolldown).
+          npm install vite@7.3.6
           yarn install && yarn build
           popd
 
