@@ -154,11 +154,14 @@ class PlatformFFI {
     };
   }
 
-  void setRgbaCallback(void Function(int, Uint8List) fun) {
-    context["onRgba"] = (int display, Uint8List? rgba) {
-      if (rgba != null) {
-        fun(display, rgba);
+  void setRgbaCallback(void Function(int, Uint8List, int, int) fun) {
+    context["onRgba"] = (int display, Uint8List? rgba, [width, height]) {
+      if (rgba == null) {
+        return;
       }
+      final w = width is int ? width : int.tryParse('$width') ?? 0;
+      final h = height is int ? height : int.tryParse('$height') ?? 0;
+      fun(display, rgba, w, h);
     };
   }
 
