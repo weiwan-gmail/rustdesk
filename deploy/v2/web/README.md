@@ -65,17 +65,21 @@ BASE_HREF=/rustdesk/ ./build-web-client.sh   # 子路径挂载时
 
 `dist/` 是纯静态文件，交给任意 Web 服务器即可；但 `/ws/id`、`/ws/relay` 两个 WS 端点需要反向代理到 `hbbs:21118`、`hbbr:21119`（见 `Caddyfile`）。
 
-#### 本机单二进制（复用 v1 的 localserver）
+#### 本机单二进制（localserver）
 
-v2 没有单独的 localserver 源码，直接复用 v1 的（纯静态服务 + WS 代理，与客户端版本无关）：
+v2 有自己的 localserver（`deploy/v2/web/localserver`，纯静态服务 + WS 代理，与 v1 同源、内嵌 v2 客户端），产出**跨平台单文件** `rustdesk-web-v2`：
 
 ```bash
-cd deploy/v2/web && ./build-web-client.sh                 # 先产出 v2 的 dist
-cd ../../v1/web/localserver
-cp -r ../../../v2/web/dist/. static/                     # 用 v2 产物替换内嵌静态资源
-./build.sh                                               # 产出 rustdesk-web 单二进制
-./rustdesk-web --server 192.168.1.10 --open
+cd deploy/v2/web/localserver
+./build.sh                 # 先构建 v2 客户端（若 dist/ 不存在），再编译当前平台二进制
+./build.sh --all           # 交叉编译 linux/amd64、linux/arm64、windows/amd64、darwin/amd64、darwin/arm64
+
+./rustdesk-web-v2                                # 零配置：http://localhost:8080 ，服务器在网页设置里填
+./rustdesk-web-v2 --server 192.168.1.10 --open   # 指定服务器并自动打开浏览器
+./rustdesk-web-v2 --server rustdesk.example.com --listen :9000
 ```
+
+参数与 v1 相同：`--server host[:port]`（默认端口 21116，WS 端口自动推导 +2/+3；域名无端口时走 80/443 的 `/ws/id`、`/ws/relay`）、`--listen`、`--base-path`、`--tls-cert/--tls-key`、`--open`。
 
 ## 客户端使用
 

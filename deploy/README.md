@@ -9,7 +9,8 @@
 | 协议代码 | 冻结 proto（vendored 生成物） | 从当前 `libs/hbb_common/protos` 实时生成 |
 | 界面风格 | 旧版连接页 | 与当前桌面 GUI 对齐（连接页 + 桌面版远程页/工具栏） |
 | 功能 | outgoing 远控（画面/键鼠/剪贴板/聊天/音频） | 同左 + 2FA、`<id>@<server>?key=` 内联语法、跟随当前协议特性 |
-| 交付方式 | 静态页 + WS 代理 / Caddy / compose / localserver 单二进制 / portal 子路径 | 静态页 + WS 代理 / Caddy / compose / 复用 v1 localserver |
+| 交付方式 | 静态页 + WS 代理 / Caddy / compose / localserver 单二进制 / portal 子路径 | 静态页 + WS 代理 / Caddy / compose / 自有 localserver 单二进制 / web-direct 直连单二进制 |
+| 跨平台单文件 | `rustdesk-web`、`rustdesk-web-direct`（linux/windows/macOS × amd64/arm64） | `rustdesk-web-v2`、`rustdesk-web-v2-direct`（同左） |
 | 运行时契约 | `config.js`、`/ws/id`、`/ws/relay`、`SITE_ADDRESS`、`BASE_HREF` | **完全相同** |
 | 适用 | 要一个稳定、冻结、已长期验证的 Web 客户端 | 要 Web 端界面/协议跟随当前桌面端演进 |
 
