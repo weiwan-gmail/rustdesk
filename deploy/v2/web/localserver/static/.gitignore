@@ -1,0 +1,4 @@
+# everything here is build output except this placeholder pair
+*
+!.gitignore
+!index.html
