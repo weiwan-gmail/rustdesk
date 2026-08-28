@@ -93,6 +93,7 @@ cd deploy/v2/web/localserver
 - HTTP 页面下 `ws://` 连接不受浏览器混合内容限制，画面/键鼠等核心功能正常。
 - `localhost`/`127.0.0.1` 被浏览器视为安全上下文，本机访问无任何限制。
 - 非 localhost 的 HTTP 站点：剪贴板可能需授权/降级、PWA 不可用（无影响）、视频解码回退单线程（无 `SharedArrayBuffer`，性能略降）。
+- 要让内网 HTTP 站点解锁安全上下文能力（WebCodecs 硬解、多线程解码、PWA），可配内网根 CA 走 HTTPS，见 [ROOT-CA.md](ROOT-CA.md)（可选）。
 
 ## 安全说明
 

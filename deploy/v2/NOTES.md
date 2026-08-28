@@ -63,3 +63,17 @@ v1 NOTES 的「hbbr loopback 当 CLI 通道」「改配置前先杀进程」等�
 3. 浏览器全新 profile 开页面：控制台应有 `init done`，无 `setByName/getByName` 相关报错。
 4. 协议级冒烟：console 里 `setByName('session_add_sync', ...)` + `session_start` → 应依次看到 `Connected to rendezvous server` → `Got relay response` → `Connected to relay server` → `secured` → `input-password` 事件。
 5. 完整 UI 链路：输 ID → 连接 → 密码 → 远程画面。
+
+## 六、视频渲染链路：黑屏 bug 的根因（直连模式首轮黑屏）
+
+直连模式第一版端到端测试时，握手/登录/收帧全部正常（控制台有 `secured`、`onRgba` 计数在涨），但**画面全黑**。这是 v2 视频渲染路径上最隐蔽的一个 bug，根因有两层：
+
+1. **WebGL canvas 上下文被独占**：`globals.ts` 的 `draw()` 先 `YUVCanvas.attach(canvas, {webGL: true})`（这一步已经 `getContext` 占用了 canvas），之后又对同一个 canvas 调 `getContext("webgl")` 想拿 `gl` 做 `readPixels`——**重复 `getContext` 且属性不匹配时返回 `null`**，于是 `gl` 是 null。结果 `draw()` 既没走 worker 分支也没走 readPixels 分支，帧被静默丢弃 → 黑画布。
+2. **`yuv.wasm` 没随产物发布**：软件兜底 worker 依赖的 `yuv.wasm` 没进 `dist/`，无 WebGL 环境的兜底路径也不可用。
+
+**修法**（已合入 develop）：放弃 readPixels 回读，改成**在 JS 里用软件把 ogv 的 I420 `frameBuffer` 直接转成 RGBA**（`i420ToRgba`），再把真实帧宽高一起传给 `onRgba(display, rgba, w, h)`——顺带修了 Flutter 侧 `decodeImageFromPixels` 之前拿到 0 或错误 1080x720 矩形的问题。
+
+**教训**：
+- 「协议通了但画面黑」时，问题几乎一定在**渲染链路**而非协议——用 `window.onRgba` 挂钩统计每级数据量（v1 NOTES 的 CDP 方法论）逐段定位：帧到没到 JS → 解码出 YUV 没 → 转 RGBA 没 → Dart 收到没 → `decodeImageFromPixels` 成功没。
+- 一个 canvas 的 2D/webgl 上下文**只能 `getContext` 一次**，重复获取且属性不符会静默返回 null——这类 bug 不抛异常，最难查。
+- 软件 I420→RGBA 虽然吃 CPU，但**确定性最强**（不依赖 WebGL/共享上下文），作为兜底的正确性保障；性能优化走 WebCodecs（见 [OPTIMIZATION.md](OPTIMIZATION.md)）。

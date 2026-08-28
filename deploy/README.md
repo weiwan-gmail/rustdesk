@@ -29,7 +29,7 @@ cd deploy/v2/web && cp .env.example .env && docker compose up -d
 ## 文档索引
 
 - v1：使用与部署 [deploy/v1/web/README.md](v1/web/README.md)；开发经验 [deploy/v1/web/NOTES.md](v1/web/NOTES.md)；目录说明 [deploy/v1/README.md](v1/README.md)
-- v2：使用与部署 [deploy/v2/web/README.md](v2/web/README.md)；开发经验 [deploy/v2/NOTES.md](v2/NOTES.md)；目录说明 [deploy/v2/README.md](v2/README.md)
+- v2：使用与部署 [deploy/v2/web/README.md](v2/web/README.md)；开发经验 [deploy/v2/NOTES.md](v2/NOTES.md)；性能优化规划 [deploy/v2/OPTIMIZATION.md](v2/OPTIMIZATION.md)；内网 HTTPS/根 CA [deploy/v2/web/ROOT-CA.md](v2/web/ROOT-CA.md)；目录说明 [deploy/v2/README.md](v2/README.md)
 
 ## 选择建议
 
