@@ -11,6 +11,7 @@ import { loadVideoDecoder } from "./codec";
 import { checkIfRetry, version } from "./gen_js_from_hbb";
 import { initZstd, translate } from "./common";
 import PCMPlayer from "pcm-player";
+import { i420ToRgba, normalizeOgvFrame } from "./paint_util";
 
 declare global {
   interface Window {
@@ -23,7 +24,7 @@ declare global {
     isMobile: () => boolean;
     onInitFinished: () => void;
     onGlobalEvent: (message: string) => void;
-    onRgba: (display: number, rgba: Uint8Array) => void;
+    onRgba: (display: number, rgba: Uint8Array, width?: number, height?: number) => void;
     onRegisteredEvent: (message: string) => void;
   }
 }
@@ -76,43 +77,29 @@ export function pushEvent(name: string, payload: any) {
 }
 
 // ========================== video begin ==========================
-let yuvWorker: Worker | undefined;
-let yuvCanvas: any;
-let gl: WebGLRenderingContext | null | undefined;
-let pixels: Uint8Array | undefined;
-let flipPixels: Uint8Array | undefined;
-let oldSize = 0;
-
-if (window.YUVCanvas?.WebGLFrameSink?.isAvailable?.()) {
-  const canvas = document.createElement("canvas");
-  yuvCanvas = window.YUVCanvas.attach(canvas, { webGL: true });
-  gl = canvas.getContext("webgl");
-} else {
-  yuvWorker = new Worker("./yuv.js");
-}
+// Do not go through YUVCanvas.attach + getContext("webgl") + readPixels.
+// attach() already creates a WebGL context with preserveDrawingBuffer;
+// a second getContext("webgl") without those attributes is null on Chrome,
+// and the old draw() then took neither the worker nor the GL branch.
+// yuv.js also needs yuv.wasm, which fetch-codecs.sh does not ship.
+// Software I420→RGBA is the path that always produces a Flutter Image.
 
 export function draw(display: number, frame: any) {
-  if (yuvWorker) {
-    // frame's (y/u/v).bytes are detached on transfer; post directly.
-    yuvWorker.postMessage({ display, frame });
-  } else {
-    yuvCanvas.drawFrame(frame);
-    const canvas = yuvCanvas.canvas as HTMLCanvasElement;
-    const width = canvas.width;
-    const height = canvas.height;
-    const size = width * height * 4;
-    if (size != oldSize) {
-      pixels = new Uint8Array(size);
-      flipPixels = new Uint8Array(size);
-      oldSize = size;
-    }
-    gl!.readPixels(0, 0, width, height, gl!.RGBA, gl!.UNSIGNED_BYTE, pixels!);
-    const row = width * 4;
-    const end = (height - 1) * row;
-    for (let i = 0; i < size; i += row) {
-      flipPixels!.set(pixels!.subarray(i, i + row), end - i);
-    }
-    window.onRgba(display, flipPixels!);
+  if (!window.onRgba) return;
+  try {
+    const yuv = normalizeOgvFrame(frame);
+    if (!yuv) return;
+    const rgba = i420ToRgba(yuv);
+    if (!rgba) return;
+    // Copy: Dart decodeImageFromPixels can detach the JS ArrayBuffer.
+    window.onRgba(
+      display,
+      new Uint8Array(rgba),
+      yuv.format.displayWidth,
+      yuv.format.displayHeight
+    );
+  } catch (e) {
+    console.error("Failed to draw video frame: " + e);
   }
 }
 // ========================== video end ============================
@@ -890,18 +877,15 @@ function getOrCreateUuid(): string {
 }
 
 window.init = async () => {
-  if (yuvWorker) {
-    yuvWorker.onmessage = (e) => {
-      window.onRgba(e.data.display, e.data.frame);
-    };
-  }
   try {
     await readySodium();
   } catch (e) {
     console.error("Failed to init sodium: " + e);
   }
   try {
-    loadVideoDecoder("vp9", () => {});
+    void loadVideoDecoder("vp9").catch((e) => {
+      console.error("Failed to preload vp9 decoder: " + e);
+    });
   } catch (e) {
     console.error("Failed to preload vp9 decoder: " + e);
   }

@@ -342,7 +342,7 @@ class FfiModel with ChangeNotifier {
       } else if (name == 'set_multiple_windows_session') {
         handleMultipleWindowsSession(evt, sessionId, peerId);
       } else if (name == 'peer_info') {
-        handlePeerInfo(evt, peerId, false);
+        await handlePeerInfo(evt, peerId, false);
       } else if (name == 'sync_peer_info') {
         handleSyncPeerInfo(evt, sessionId, peerId);
       } else if (name == 'sync_platform_additions') {
@@ -893,6 +893,36 @@ class FfiModel with ChangeNotifier {
 
     showWindowsSessionsDialog(
         type, title, text, dialogManager, sessionId, peerId, sessions);
+  }
+
+  /// Web peer_info carries the proto WindowsSessions object (JSON object with
+  /// `sessions` / `current_sid`). Native `set_multiple_windows_session` carries
+  /// a flat `[{sid, name}]` list. Normalize so [showWindowsSessionsDialog] works.
+  void maybeShowWebWindowsSessions(Map<String, dynamic> evt, String peerId) {
+    final raw = evt['windows_sessions'];
+    if (raw == null || raw == '' || raw == 'null') return;
+    try {
+      final decoded = raw is String ? json.decode(raw) : raw;
+      List<dynamic> list;
+      if (decoded is List) {
+        list = decoded;
+      } else if (decoded is Map && decoded['sessions'] is List) {
+        list = decoded['sessions'] as List;
+      } else {
+        return;
+      }
+      if (list.isEmpty) return;
+      final sessionsJson = json.encode(list.map((s) {
+        if (s is Map) {
+          return {'sid': '${s['sid']}', 'name': '${s['name'] ?? ''}'};
+        }
+        return s;
+      }).toList());
+      handleMultipleWindowsSession(
+          {'windows_sessions': sessionsJson}, sessionId, peerId);
+    } catch (e) {
+      debugPrint('windows_sessions parse failed: $e');
+    }
   }
 
   /// Handle the message box event based on [evt] and [id].
@@ -1487,6 +1517,14 @@ class FfiModel with ChangeNotifier {
     if (!isCache) {
       tryUseAllMyDisplaysForTheRemoteSession(peerId);
     }
+
+    // Web JS may include PeerInfo.windows_sessions on peer_info. Show the
+    // picker here (after dismissAll) so a multi-session Windows host is not
+    // left waiting on selected_sid. Native emits a separate event; web also
+    // emits that, but handlePeerInfo is async and used to race it.
+    if (!isCache && isWeb) {
+      maybeShowWebWindowsSessions(evt, peerId);
+    }
   }
 
   checkDesktopKeyboardMode() async {
@@ -1924,9 +1962,13 @@ class ImageModel with ChangeNotifier {
 
   bool _webDecodingRgba = false;
   final List<Uint8List> _webRgbaList = List.empty(growable: true);
-  webOnRgba(int display, Uint8List rgba) async {
+  int _webRgbaWidth = 0;
+  int _webRgbaHeight = 0;
+  webOnRgba(int display, Uint8List rgba, {int width = 0, int height = 0}) async {
     // deep copy needed, otherwise "instantiateCodec failed: TypeError: Cannot perform Construct on a detached ArrayBuffer"
     _webRgbaList.add(Uint8List.fromList(rgba));
+    _webRgbaWidth = width;
+    _webRgbaHeight = height;
     if (_webDecodingRgba) {
       return;
     }
@@ -1935,7 +1977,8 @@ class ImageModel with ChangeNotifier {
       while (_webRgbaList.isNotEmpty) {
         final rgba2 = _webRgbaList.last;
         _webRgbaList.clear();
-        await decodeAndUpdate(display, rgba2);
+        await decodeAndUpdate(display, rgba2,
+            width: _webRgbaWidth, height: _webRgbaHeight);
       }
     } catch (e) {
       debugPrint('onRgba error: $e');
@@ -1952,13 +1995,29 @@ class ImageModel with ChangeNotifier {
     platformFFI.nextRgba(sessionId, display);
   }
 
-  decodeAndUpdate(int display, Uint8List rgba) async {
+  decodeAndUpdate(int display, Uint8List rgba,
+      {int width = 0, int height = 0}) async {
     final pid = parent.target?.id;
     final rect = parent.target?.ffiModel.pi.getDisplayRect(display);
+    final rectW = rect?.width.toInt() ?? 0;
+    final rectH = rect?.height.toInt() ?? 0;
+    // Prefer the decoded frame size. PeerInfo can still be the desktop
+    // default (1080x720) or 0 when the first VP9 frame arrives.
+    var w = width;
+    var h = height;
+    if (w <= 0 || h <= 0 || w * h * 4 != rgba.length) {
+      w = rectW;
+      h = rectH;
+    }
+    if (w <= 0 || h <= 0 || w * h * 4 != rgba.length) {
+      debugPrint(
+          'onRgba size mismatch: rgba=${rgba.length} frame=${width}x$height rect=${rectW}x$rectH');
+      return;
+    }
     final image = await img.decodeImageFromPixels(
       rgba,
-      rect?.width.toInt() ?? 0,
-      rect?.height.toInt() ?? 0,
+      w,
+      h,
       isWeb | isWindows | isLinux
           ? ui.PixelFormat.rgba8888
           : ui.PixelFormat.bgra8888,
@@ -3849,9 +3908,10 @@ class FFI {
     }
 
     if (isWeb) {
-      platformFFI.setRgbaCallback((int display, Uint8List data) {
+      platformFFI.setRgbaCallback((int display, Uint8List data, int width, int height) {
         onEvent2UIRgba();
-        imageModel.onRgba(display, data);
+        // Copy before decode — instantiateCodec detaches the JS ArrayBuffer.
+        imageModel.webOnRgba(display, data, width: width, height: height);
       });
       this.id = id;
       return;
