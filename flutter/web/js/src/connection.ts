@@ -9,9 +9,11 @@ import { decompress, mapKey, sleep } from "./common";
 import { version } from "./gen_js_from_hbb";
 import {
   enqueueVideoFrame,
+  shouldAutoSelectWindowsSession,
   videoFrameAction,
   videoFrameKind,
   webSupportedDecodingPartial,
+  windowsSessionsForPicker,
 } from "./video_util";
 
 export const PORT = 21116;
@@ -58,6 +60,7 @@ export default class Connection {
   _videoDecoders: { vp9?: VideoDecoder; vp8?: VideoDecoder };
   _videoDecodersReady: Promise<void> | undefined;
   _pendingVideoFrames: message.VideoFrame[];
+  _selectedWindowsSessionId: number | undefined;
   _password: Uint8Array | undefined;
   _options: any;
   _videoTestSpeed: number[];
@@ -615,7 +618,21 @@ export default class Connection {
       return;
     }
     this.msgbox("success", "Successful", "Connected, waiting for image...");
-    globals.pushEvent("peer_info", pi);
+    const picker = windowsSessionsForPicker(pi.windows_sessions);
+    if (picker && shouldAutoSelectWindowsSession(picker.currentSid, this._selectedWindowsSessionId)) {
+      // Same session as last time: skip the picker so video can start immediately.
+      this.sendSelectedSessionId(String(picker.currentSid));
+      globals.pushEvent("peer_info", { ...pi, windows_sessions: undefined });
+    } else {
+      globals.pushEvent("peer_info", pi);
+      if (picker) {
+        // Native emits this after handle_peer_info; without it the host sits on
+        // wait_session_id_confirm and never calls try_sub_monitor_services().
+        globals.pushEvent("set_multiple_windows_session", {
+          windows_sessions: picker.sessions,
+        });
+      }
+    }
     // Repeat VP8/VP9 abilities after login (native update_supported_decodings).
     this.changePreferCodec();
     const p = this.shouldAutoLogin();
@@ -978,6 +995,7 @@ export default class Connection {
   sendSelectedSessionId(sid: string) {
     const selected_sid = parseInt(sid);
     if (isNaN(selected_sid)) return;
+    this._selectedWindowsSessionId = selected_sid;
     const misc = message.Misc.fromPartial({ selected_sid });
     this._ws?.sendMessage({ misc });
   }

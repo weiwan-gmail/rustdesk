@@ -57,3 +57,40 @@ export function enqueueVideoFrame<T>(queue: T[], frame: T, max = MAX_PENDING_VID
   if (next.length <= max) return next;
   return next.slice(next.length - max);
 }
+
+// Host sets PeerInfo.windows_sessions and waits for selected_sid when the
+// controlled Windows client is installed, share_rdp is on, and there is more
+// than one session. Native Flutter shows set_multiple_windows_session; web
+// must emit the same payload or video never starts.
+export type WindowsSessionRow = { sid?: number; name?: string };
+
+export type WindowsSessionsFields = {
+  sessions?: WindowsSessionRow[];
+  current_sid?: number;
+};
+
+export type WindowsSessionPicker = {
+  currentSid: number;
+  sessions: { sid: string; name: string }[];
+};
+
+export function windowsSessionsForPicker(
+  wsess: WindowsSessionsFields | undefined | null
+): WindowsSessionPicker | undefined {
+  const sessions = wsess?.sessions ?? [];
+  if (!sessions.length) return undefined;
+  return {
+    currentSid: wsess?.current_sid ?? 0,
+    sessions: sessions.map((s) => ({
+      sid: String(s.sid ?? 0),
+      name: s.name || String(s.sid ?? 0),
+    })),
+  };
+}
+
+export function shouldAutoSelectWindowsSession(
+  currentSid: number,
+  remembered: number | undefined
+): boolean {
+  return remembered !== undefined && remembered === currentSid;
+}

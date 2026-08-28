@@ -342,7 +342,7 @@ class FfiModel with ChangeNotifier {
       } else if (name == 'set_multiple_windows_session') {
         handleMultipleWindowsSession(evt, sessionId, peerId);
       } else if (name == 'peer_info') {
-        handlePeerInfo(evt, peerId, false);
+        await handlePeerInfo(evt, peerId, false);
       } else if (name == 'sync_peer_info') {
         handleSyncPeerInfo(evt, sessionId, peerId);
       } else if (name == 'sync_platform_additions') {
@@ -893,6 +893,36 @@ class FfiModel with ChangeNotifier {
 
     showWindowsSessionsDialog(
         type, title, text, dialogManager, sessionId, peerId, sessions);
+  }
+
+  /// Web peer_info carries the proto WindowsSessions object (JSON object with
+  /// `sessions` / `current_sid`). Native `set_multiple_windows_session` carries
+  /// a flat `[{sid, name}]` list. Normalize so [showWindowsSessionsDialog] works.
+  void maybeShowWebWindowsSessions(Map<String, dynamic> evt, String peerId) {
+    final raw = evt['windows_sessions'];
+    if (raw == null || raw == '' || raw == 'null') return;
+    try {
+      final decoded = raw is String ? json.decode(raw) : raw;
+      List<dynamic> list;
+      if (decoded is List) {
+        list = decoded;
+      } else if (decoded is Map && decoded['sessions'] is List) {
+        list = decoded['sessions'] as List;
+      } else {
+        return;
+      }
+      if (list.isEmpty) return;
+      final sessionsJson = json.encode(list.map((s) {
+        if (s is Map) {
+          return {'sid': '${s['sid']}', 'name': '${s['name'] ?? ''}'};
+        }
+        return s;
+      }).toList());
+      handleMultipleWindowsSession(
+          {'windows_sessions': sessionsJson}, sessionId, peerId);
+    } catch (e) {
+      debugPrint('windows_sessions parse failed: $e');
+    }
   }
 
   /// Handle the message box event based on [evt] and [id].
@@ -1486,6 +1516,14 @@ class FfiModel with ChangeNotifier {
 
     if (!isCache) {
       tryUseAllMyDisplaysForTheRemoteSession(peerId);
+    }
+
+    // Web JS may include PeerInfo.windows_sessions on peer_info. Show the
+    // picker here (after dismissAll) so a multi-session Windows host is not
+    // left waiting on selected_sid. Native emits a separate event; web also
+    // emits that, but handlePeerInfo is async and used to race it.
+    if (!isCache && isWeb) {
+      maybeShowWebWindowsSessions(evt, peerId);
     }
   }
 

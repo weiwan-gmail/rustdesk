@@ -3,9 +3,11 @@ import assert from "node:assert/strict";
 import {
   enqueueVideoFrame,
   MAX_PENDING_VIDEO_FRAMES,
+  shouldAutoSelectWindowsSession,
   videoFrameAction,
   videoFrameKind,
   webSupportedDecodingPartial,
+  windowsSessionsForPicker,
 } from "./video_util.ts";
 
 describe("webSupportedDecodingPartial", () => {
@@ -48,6 +50,37 @@ describe("videoFrameAction", () => {
   });
   it("ignores empty frames", () => {
     assert.deepEqual(videoFrameAction(undefined, true), { type: "ignore" });
+  });
+});
+
+describe("windowsSessionsForPicker", () => {
+  it("returns undefined when the host did not send sessions", () => {
+    assert.equal(windowsSessionsForPicker(undefined), undefined);
+    assert.equal(windowsSessionsForPicker({ sessions: [] }), undefined);
+  });
+  it("flattens proto sessions to the native Flutter picker payload", () => {
+    const p = windowsSessionsForPicker({
+      current_sid: 2,
+      sessions: [
+        { sid: 1, name: "Console: user" },
+        { sid: 2, name: "RDP: user (running)" },
+      ],
+    });
+    assert.deepEqual(p, {
+      currentSid: 2,
+      sessions: [
+        { sid: "1", name: "Console: user" },
+        { sid: "2", name: "RDP: user (running)" },
+      ],
+    });
+  });
+});
+
+describe("shouldAutoSelectWindowsSession", () => {
+  it("auto-sends only when the remembered sid is the host current_sid", () => {
+    assert.equal(shouldAutoSelectWindowsSession(2, 2), true);
+    assert.equal(shouldAutoSelectWindowsSession(2, 1), false);
+    assert.equal(shouldAutoSelectWindowsSession(2, undefined), false);
   });
 });
 
