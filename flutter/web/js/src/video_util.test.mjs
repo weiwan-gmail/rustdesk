@@ -4,6 +4,7 @@ import {
   enqueueVideoFrame,
   MAX_PENDING_VIDEO_FRAMES,
   shouldAutoSelectWindowsSession,
+  sidToStartVideo,
   videoFrameAction,
   videoFrameKind,
   webSupportedDecodingPartial,
@@ -81,6 +82,25 @@ describe("shouldAutoSelectWindowsSession", () => {
     assert.equal(shouldAutoSelectWindowsSession(2, 2), true);
     assert.equal(shouldAutoSelectWindowsSession(2, 1), false);
     assert.equal(shouldAutoSelectWindowsSession(2, undefined), false);
+  });
+});
+
+describe("sidToStartVideo", () => {
+  const picker = {
+    currentSid: 2,
+    sessions: [
+      { sid: "1", name: "Console" },
+      { sid: "2", name: "RDP" },
+    ],
+  };
+  it("sends current_sid when nothing is remembered so video can start", () => {
+    assert.equal(sidToStartVideo(picker, undefined), "2");
+  });
+  it("keeps a remembered sid that is still in the list", () => {
+    assert.equal(sidToStartVideo(picker, 1), "1");
+  });
+  it("falls back to current_sid if the remembered sid disappeared", () => {
+    assert.equal(sidToStartVideo(picker, 9), "2");
   });
 });
 

@@ -94,3 +94,19 @@ export function shouldAutoSelectWindowsSession(
 ): boolean {
   return remembered !== undefined && remembered === currentSid;
 }
+
+// Always pick a sid so the host leaves wait_session_id_confirm.
+// Prefer a remembered sid that is still listed; otherwise current_sid, which
+// starts video on this connection (a different sid can make the host reconnect).
+export function sidToStartVideo(
+  picker: WindowsSessionPicker,
+  remembered: number | undefined
+): string {
+  if (
+    remembered !== undefined &&
+    picker.sessions.some((s) => s.sid === String(remembered))
+  ) {
+    return String(remembered);
+  }
+  return String(picker.currentSid);
+}

@@ -3889,7 +3889,8 @@ class FFI {
     if (isWeb) {
       platformFFI.setRgbaCallback((int display, Uint8List data) {
         onEvent2UIRgba();
-        imageModel.onRgba(display, data);
+        // Copy before decode — instantiateCodec detaches the JS ArrayBuffer.
+        imageModel.webOnRgba(display, data);
       });
       this.id = id;
       return;

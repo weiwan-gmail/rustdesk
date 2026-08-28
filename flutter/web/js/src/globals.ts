@@ -78,41 +78,50 @@ export function pushEvent(name: string, payload: any) {
 // ========================== video begin ==========================
 let yuvWorker: Worker | undefined;
 let yuvCanvas: any;
+let yuvCanvasEl: HTMLCanvasElement | undefined;
 let gl: WebGLRenderingContext | null | undefined;
 let pixels: Uint8Array | undefined;
 let flipPixels: Uint8Array | undefined;
 let oldSize = 0;
 
 if (window.YUVCanvas?.WebGLFrameSink?.isAvailable?.()) {
-  const canvas = document.createElement("canvas");
-  yuvCanvas = window.YUVCanvas.attach(canvas, { webGL: true });
-  gl = canvas.getContext("webgl");
+  yuvCanvasEl = document.createElement("canvas");
+  yuvCanvas = window.YUVCanvas.attach(yuvCanvasEl, { webGL: true });
+  gl = yuvCanvasEl.getContext("webgl");
 } else {
-  yuvWorker = new Worker("./yuv.js");
+  // Worker URLs are resolved against this module (js/dist/index.js), not the
+  // page. yuv.js / yuv.wasm are served next to index.html.
+  yuvWorker = new Worker(new URL("yuv.js", document.baseURI).toString());
 }
 
 export function draw(display: number, frame: any) {
-  if (yuvWorker) {
-    // frame's (y/u/v).bytes are detached on transfer; post directly.
-    yuvWorker.postMessage({ display, frame });
-  } else {
-    yuvCanvas.drawFrame(frame);
-    const canvas = yuvCanvas.canvas as HTMLCanvasElement;
-    const width = canvas.width;
-    const height = canvas.height;
-    const size = width * height * 4;
-    if (size != oldSize) {
-      pixels = new Uint8Array(size);
-      flipPixels = new Uint8Array(size);
-      oldSize = size;
+  if (!window.onRgba) return;
+  try {
+    if (yuvWorker) {
+      // frame's (y/u/v).bytes are detached on transfer; post directly.
+      yuvWorker.postMessage({ display, frame });
+    } else if (yuvCanvas && yuvCanvasEl && gl) {
+      yuvCanvas.drawFrame(frame);
+      const width = yuvCanvasEl.width;
+      const height = yuvCanvasEl.height;
+      const size = width * height * 4;
+      if (size <= 0) return;
+      if (size != oldSize) {
+        pixels = new Uint8Array(size);
+        flipPixels = new Uint8Array(size);
+        oldSize = size;
+      }
+      gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels!);
+      const row = width * 4;
+      const end = (height - 1) * row;
+      for (let i = 0; i < size; i += row) {
+        flipPixels!.set(pixels!.subarray(i, i + row), end - i);
+      }
+      // Copy: Dart decodeImageFromPixels can detach the ArrayBuffer.
+      window.onRgba(display, new Uint8Array(flipPixels!));
     }
-    gl!.readPixels(0, 0, width, height, gl!.RGBA, gl!.UNSIGNED_BYTE, pixels!);
-    const row = width * 4;
-    const end = (height - 1) * row;
-    for (let i = 0; i < size; i += row) {
-      flipPixels!.set(pixels!.subarray(i, i + row), end - i);
-    }
-    window.onRgba(display, flipPixels!);
+  } catch (e) {
+    console.error("Failed to draw video frame: " + e);
   }
 }
 // ========================== video end ============================

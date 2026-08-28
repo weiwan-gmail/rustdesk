@@ -9,7 +9,7 @@ import { decompress, mapKey, sleep } from "./common";
 import { version } from "./gen_js_from_hbb";
 import {
   enqueueVideoFrame,
-  shouldAutoSelectWindowsSession,
+  sidToStartVideo,
   videoFrameAction,
   videoFrameKind,
   webSupportedDecodingPartial,
@@ -605,7 +605,7 @@ export default class Connection {
   handlePeerInfo(pi: message.PeerInfo) {
     localStorage.setItem("last_remote_id", this._id);
     this._peerInfo = pi;
-    if (pi.current_display > pi.displays.length) {
+    if (pi.current_display >= pi.displays.length) {
       pi.current_display = 0;
     }
     if (globals.getVersionNumber(pi.version) < globals.getVersionNumber("1.1.10")) {
@@ -619,19 +619,14 @@ export default class Connection {
     }
     this.msgbox("success", "Successful", "Connected, waiting for image...");
     const picker = windowsSessionsForPicker(pi.windows_sessions);
-    if (picker && shouldAutoSelectWindowsSession(picker.currentSid, this._selectedWindowsSessionId)) {
-      // Same session as last time: skip the picker so video can start immediately.
-      this.sendSelectedSessionId(String(picker.currentSid));
-      globals.pushEvent("peer_info", { ...pi, windows_sessions: undefined });
-    } else {
-      globals.pushEvent("peer_info", pi);
-      if (picker) {
-        // Native emits this after handle_peer_info; without it the host sits on
-        // wait_session_id_confirm and never calls try_sub_monitor_services().
-        globals.pushEvent("set_multiple_windows_session", {
-          windows_sessions: picker.sessions,
-        });
-      }
+    globals.pushEvent("peer_info", pi);
+    if (picker) {
+      // Do not wait for the picker. Without selected_sid the host never
+      // calls try_sub_monitor_services() and the canvas stays black.
+      this.sendSelectedSessionId(sidToStartVideo(picker, this._selectedWindowsSessionId));
+      globals.pushEvent("set_multiple_windows_session", {
+        windows_sessions: picker.sessions,
+      });
     }
     // Repeat VP8/VP9 abilities after login (native update_supported_decodings).
     this.changePreferCodec();
