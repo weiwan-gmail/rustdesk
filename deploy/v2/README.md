@@ -12,6 +12,8 @@ fetch-codecs.sh     codec bundle fetcher (ogv.js / yuv-canvas / libopus)
 
 v1 is kept untouched under `deploy/v1` for comparison.
 
+**文档**：使用与部署见 [web/README.md](web/README.md)；开发经验与踩坑见 [NOTES.md](NOTES.md)；v1/v2 对比与选择见 [../README.md](../README.md)。
+
 ## What v2 is
 
 - **UI**: the current Flutter UI (`flutter/lib`), built with
