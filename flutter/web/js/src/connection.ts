@@ -7,6 +7,12 @@ import * as globals from "./globals";
 import * as consts from "./consts";
 import { decompress, mapKey, sleep } from "./common";
 import { version } from "./gen_js_from_hbb";
+import {
+  enqueueVideoFrame,
+  videoFrameAction,
+  videoFrameKind,
+  webSupportedDecodingPartial,
+} from "./video_util";
 
 export const PORT = 21116;
 // Default direct-access port of the controlled client (RENDEZVOUS_PORT + 2).
@@ -50,6 +56,8 @@ export default class Connection {
   _peerInfo: message.PeerInfo | undefined;
   _firstFrame: Boolean | undefined;
   _videoDecoders: { vp9?: VideoDecoder; vp8?: VideoDecoder };
+  _videoDecodersReady: Promise<void> | undefined;
+  _pendingVideoFrames: message.VideoFrame[];
   _password: Uint8Array | undefined;
   _options: any;
   _videoTestSpeed: number[];
@@ -60,6 +68,7 @@ export default class Connection {
     this._msgs = [];
     this._id = "";
     this._videoDecoders = {};
+    this._pendingVideoFrames = [];
     this._videoTestSpeed = [0, 0];
     this._closed = false;
   }
@@ -91,7 +100,7 @@ export default class Connection {
   async _startDirect(target: string) {
     this._loadOptions(target);
     this._startMsgPump();
-    this.loadVideoDecoders();
+    const decoders = this.ensureVideoDecoders();
     const addr = normalizeDirectTarget(target);
     const directPath = CONF.directPath || "/direct";
     const uri =
@@ -106,6 +115,7 @@ export default class Connection {
     this._id = target;
     await ws.open();
     console.log(new Date() + ": Connected (direct)");
+    await this._awaitVideoDecoders(decoders);
     globals.pushEvent("connection_ready", { secure: false, direct: true });
     await this.msgLoop();
   }
@@ -113,7 +123,8 @@ export default class Connection {
   async _start(id: string) {
     this._loadOptions(id);
     this._startMsgPump();
-    this.loadVideoDecoders();
+    // Kick off wasm decoder load during rendezvous so it is ready before frames.
+    void this.ensureVideoDecoders();
     const uri = getDefaultUri();
     const ws = new Websock(uri, true);
     this._ws = ws;
@@ -209,6 +220,7 @@ export default class Connection {
     });
     ws.sendRendezvous({ request_relay });
     const secure = (await this.secure(pk)) || false;
+    await this._awaitVideoDecoders(this.ensureVideoDecoders());
     globals.pushEvent("connection_ready", { secure, direct: false });
     await this.msgLoop();
   }
@@ -417,6 +429,8 @@ export default class Connection {
   close() {
     this._closed = true;
     this._msgs = [];
+    this._pendingVideoFrames = [];
+    this._videoDecodersReady = undefined;
     clearInterval(this._interval);
     this._ws?.close();
     this._videoDecoders.vp9?.close();
@@ -453,13 +467,15 @@ export default class Connection {
   }
 
   changePreferCodec() {
-    const supported_decoding = message.SupportedDecoding.fromPartial({
-      ability_vp9: 1,
-      ability_vp8: 1,
+    const option = message.OptionMessage.fromPartial({
+      supported_decoding: this.webSupportedDecoding(),
     });
-    const option = message.OptionMessage.fromPartial({ supported_decoding });
     const misc = message.Misc.fromPartial({ option });
     this._ws?.sendMessage({ misc });
+  }
+
+  webSupportedDecoding(): message.SupportedDecoding {
+    return message.SupportedDecoding.fromPartial(webSupportedDecodingPartial());
   }
 
   async reconnect() {
@@ -488,6 +504,10 @@ export default class Connection {
   getOptionMessage(): message.OptionMessage | undefined {
     let n = 0;
     const msg = message.OptionMessage.fromPartial({});
+    // Always advertise VP8/VP9, matching native LoginRequest.option.
+    // ogv.js cannot paint H264/AV1; without this the host may pick those.
+    msg.supported_decoding = this.webSupportedDecoding();
+    n += 1;
     const q = this.getImageQualityEnum(this.getImageQuality(), true);
     const yes = message.OptionMessage_BoolOption.Yes;
     if (q != undefined) {
@@ -527,10 +547,34 @@ export default class Connection {
       this.msgbox("", "", "");
       this._firstFrame = true;
     }
-    const frames = vf.vp9s ?? vf.vp8s;
+    const kind = videoFrameKind(vf);
+    const dec =
+      kind === "vp9"
+        ? this._videoDecoders.vp9
+        : kind === "vp8"
+          ? this._videoDecoders.vp8
+          : undefined;
+    const action = videoFrameAction(kind, !!dec);
+    if (action.type === "queue") {
+      this._pendingVideoFrames = enqueueVideoFrame(this._pendingVideoFrames, vf);
+      // video_ack_required is set on login; dropping the first frame without
+      // an ack lets the host stall after the keyframe.
+      this.sendVideoReceived();
+      void this.ensureVideoDecoders();
+      return;
+    }
+    if (action.type === "renegotiate") {
+      console.warn(
+        "Unsupported video codec " + action.kind + "; requesting VP8/VP9"
+      );
+      this.changePreferCodec();
+      this.refresh();
+      this.sendVideoReceived();
+      return;
+    }
+    if (action.type !== "decode" || !dec) return;
+    const frames = action.kind === "vp9" ? vf.vp9s : vf.vp8s;
     if (!frames) return;
-    const dec = vf.vp9s ? this._videoDecoders.vp9 : this._videoDecoders.vp8;
-    if (!dec) return;
     const tm = new Date().getTime();
     let i = 0;
     const n = frames.frames.length;
@@ -572,6 +616,8 @@ export default class Connection {
     }
     this.msgbox("success", "Successful", "Connected, waiting for image...");
     globals.pushEvent("peer_info", pi);
+    // Repeat VP8/VP9 abilities after login (native update_supported_decodings).
+    this.changePreferCodec();
     const p = this.shouldAutoLogin();
     if (p) this.inputOsPassword(p);
     const username = this.getOption("info")?.username;
@@ -628,7 +674,11 @@ export default class Connection {
       }
       this.setPermission(name, p.enabled);
     } else if (misc.switch_display) {
-      this.loadVideoDecoders();
+      this._videoDecoders.vp9?.close();
+      this._videoDecoders.vp8?.close();
+      this._videoDecoders = {};
+      this._videoDecodersReady = undefined;
+      void this.ensureVideoDecoders();
       globals.pushEvent("switch_display", misc.switch_display);
     } else if (misc.close_reason) {
       this.msgbox("error", "Connection Error", misc.close_reason);
@@ -974,12 +1024,52 @@ export default class Connection {
     this._ws?.sendMessage({ misc });
   }
 
-  loadVideoDecoders() {
+  ensureVideoDecoders(): Promise<void> {
+    if (this._videoDecoders.vp9 && this._videoDecoders.vp8) {
+      return Promise.resolve();
+    }
+    if (!this._videoDecodersReady) {
+      this._videoDecodersReady = this._loadVideoDecoders().catch((e) => {
+        this._videoDecodersReady = undefined;
+        throw e;
+      });
+    }
+    return this._videoDecodersReady;
+  }
+
+  async _awaitVideoDecoders(p: Promise<void>) {
+    try {
+      await Promise.race([
+        p,
+        new Promise<void>((_, reject) =>
+          setTimeout(() => reject(new Error("decoder load timeout")), 8000)
+        ),
+      ]);
+    } catch (e) {
+      console.error("Failed to load video decoders, " + e);
+    }
+  }
+
+  async _loadVideoDecoders() {
     this._videoDecoders.vp9?.close();
     this._videoDecoders.vp8?.close();
     this._videoDecoders = {};
-    loadVideoDecoder("vp9", (d) => (this._videoDecoders.vp9 = d));
-    loadVideoDecoder("vp8", (d) => (this._videoDecoders.vp8 = d));
+    const [vp9, vp8] = await Promise.all([
+      loadVideoDecoder("vp9"),
+      loadVideoDecoder("vp8"),
+    ]);
+    if (this._closed) {
+      vp9.close();
+      vp8.close();
+      return;
+    }
+    this._videoDecoders.vp9 = vp9;
+    this._videoDecoders.vp8 = vp8;
+    const pending = this._pendingVideoFrames;
+    this._pendingVideoFrames = [];
+    for (const vf of pending) {
+      this.handleVideoFrame(vf);
+    }
   }
 }
 

@@ -901,7 +901,9 @@ window.init = async () => {
     console.error("Failed to init sodium: " + e);
   }
   try {
-    loadVideoDecoder("vp9", () => {});
+    void loadVideoDecoder("vp9").catch((e) => {
+      console.error("Failed to preload vp9 decoder: " + e);
+    });
   } catch (e) {
     console.error("Failed to preload vp9 decoder: " + e);
   }
