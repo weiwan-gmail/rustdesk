@@ -15,6 +15,7 @@ import {
   webSupportedDecodingPartial,
   windowsSessionsForPicker,
 } from "./video_util";
+import { shouldPaintDecodedFrame } from "./paint_util";
 
 export const PORT = 21116;
 // Default direct-access port of the controlled client (RENDEZVOUS_PORT + 2).
@@ -585,7 +586,7 @@ export default class Connection {
       dec.processFrame(f.data.slice(0).buffer, (ok: boolean) => {
         i++;
         if (i == n) this.sendVideoReceived();
-        if (ok && dec.frameBuffer && n == i) {
+        if (n == i && shouldPaintDecodedFrame(ok, dec.frameBuffer)) {
           globals.draw(vf.display, dec.frameBuffer);
           const now = new Date().getTime();
           this._videoTestSpeed[1] += now - tm;
