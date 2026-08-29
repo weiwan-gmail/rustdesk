@@ -256,6 +256,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double Tap & Move", "双击并移动"),
         ("Mouse Drag", "鼠标选中拖动"),
         ("Three-Finger vertically", "三指垂直滑动"),
+        ("Three-Finger horizontally", "三指水平滑动"),
         ("Mouse Wheel", "鼠标滚轮"),
         ("Two-Finger Move", "双指移动"),
         ("Canvas Move", "移动画布"),

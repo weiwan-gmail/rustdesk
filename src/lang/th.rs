@@ -256,6 +256,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double Tap & Move", "แตะเบิ้ลและลาก"),
         ("Mouse Drag", "ลากเมาส์"),
         ("Three-Finger vertically", "สามนิ้วแนวตั้ง"),
+        ("Three-Finger horizontally", "สามนิ้วแนวนอน"),
         ("Mouse Wheel", "ลูกลิ้งเมาส์"),
         ("Two-Finger Move", "ลากสองนิ้ว"),
         ("Canvas Move", "ลากแคนวาส"),

@@ -11,6 +11,8 @@ import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/models/model.dart';
 import 'package:flutter_hbb/models/input_model.dart';
 
+import 'package:flutter_hbb/utils/three_finger_wheel.dart';
+
 import './gestures.dart';
 
 class RawKeyFocusScope extends StatelessWidget {
@@ -90,7 +92,7 @@ class _RawTouchGestureDetectorRegionState
   Offset _cacheLongPressPosition = Offset(0, 0);
   // Timestamp of the last long press event.
   int _cacheLongPressPositionTs = 0;
-  double _mouseScrollIntegral = 0; // mouse scroll speed controller
+  final _threeFingerWheel = ThreeFingerWheelAccumulator();
   double _scale = 1;
 
   // Workaround tap down event when two fingers are used to scale(mobile)
@@ -517,13 +519,12 @@ class _RawTouchGestureDetectorRegionState
   get onThreeFingerVerticalDragUpdate => ffi.ffiModel.isPeerAndroid
       ? null
       : (d) {
-          _mouseScrollIntegral += d.delta.dy / 4;
-          if (_mouseScrollIntegral > 1) {
-            inputModel.scroll(1);
-            _mouseScrollIntegral = 0;
-          } else if (_mouseScrollIntegral < -1) {
-            inputModel.scroll(-1);
-            _mouseScrollIntegral = 0;
+          // Dominant-axis wheel: vertical swipe keeps the original behavior,
+          // and horizontal swipe also scrolls for phones whose OS already
+          // consumes three-finger vertical gestures.
+          final tick = _threeFingerWheel.add(d.delta.dx, d.delta.dy);
+          if (tick != null) {
+            inputModel.scroll(tick);
           }
         };
 

@@ -77,12 +77,10 @@ class _GestureHelpState extends State<GestureHelp> {
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final space = 12.0;
-    var width = size.width - 2 * space;
-    final minWidth = 90;
-    if (size.width > minWidth + 2 * space) {
-      final n = (size.width / (minWidth + 2 * space)).floor();
-      width = size.width / n - 2 * space;
-    }
+    // Force a 3-column grid. Narrow phones previously wrapped to 2x3; the
+    // extra horizontal-wheel cell makes this a 3x3-style sheet (3+3+1).
+    const columns = 3;
+    final width = size.width / columns - 2 * space;
     return Center(
         child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 12.0),
@@ -275,90 +273,49 @@ class _GestureHelpState extends State<GestureHelp> {
                     ],
                   ),
                 ),
-                Container(
-                    child: Wrap(
+                Wrap(
                   spacing: space,
                   runSpacing: 2 * space,
-                  children: _touchMode
-                      ? [
-                          GestureInfo(
-                              width,
-                              GestureIcons.iconMobileTouch,
-                              translate("One-Finger Tap"),
-                              translate("Left Mouse")),
-                          GestureInfo(
-                              width,
-                              GestureIcons.iconGesturePressHold,
-                              translate("One-Long Tap"),
-                              translate("Right Mouse")),
-                          GestureInfo(
-                              width,
-                              GestureIcons.iconGestureFSwipeRight,
-                              translate("One-Finger Move"),
-                              translate("Mouse Drag")),
-                          GestureInfo(
-                              width,
-                              GestureIcons.iconGestureFThreeFingers,
-                              translate("Three-Finger vertically"),
-                              translate("Mouse Wheel")),
-                          GestureInfo(
-                              width,
-                              GestureIcons.iconGestureFDrag,
-                              translate("Two-Finger Move"),
-                              translate("Canvas Move")),
-                          GestureInfo(
-                              width,
-                              GestureIcons.iconGesturePinch,
-                              translate("Pinch to Zoom"),
-                              translate("Canvas Zoom")),
-                        ]
-                      : [
-                          GestureInfo(
-                              width,
-                              GestureIcons.iconMobileTouch,
-                              translate("One-Finger Tap"),
-                              translate("Left Mouse")),
-                          GestureInfo(
-                              width,
-                              GestureIcons.iconGesturePressHold,
-                              translate("One-Long Tap"),
-                              translate("Right Mouse")),
-                          GestureInfo(
-                              width,
-                              GestureIcons.iconGestureFSwipeRight,
-                              translate("Double Tap & Move"),
-                              translate("Mouse Drag")),
-                          GestureInfo(
-                              width,
-                              GestureIcons.iconGestureFThreeFingers,
-                              translate("Three-Finger vertically"),
-                              translate("Mouse Wheel")),
-                          GestureInfo(
-                              width,
-                              GestureIcons.iconGestureFDrag,
-                              translate("Two-Finger Move"),
-                              translate("Canvas Move")),
-                          GestureInfo(
-                              width,
-                              GestureIcons.iconGesturePinch,
-                              translate("Pinch to Zoom"),
-                              translate("Canvas Zoom")),
-                        ],
-                )),
+                  children: _gestureInfos(width),
+                ),
               ],
             )));
+  }
+
+  List<Widget> _gestureInfos(double width) {
+    return [
+      GestureInfo(width, GestureIcons.iconMobileTouch,
+          translate("One-Finger Tap"), translate("Left Mouse")),
+      GestureInfo(width, GestureIcons.iconGesturePressHold,
+          translate("One-Long Tap"), translate("Right Mouse")),
+      GestureInfo(
+          width,
+          GestureIcons.iconGestureFSwipeRight,
+          translate(_touchMode ? "One-Finger Move" : "Double Tap & Move"),
+          translate("Mouse Drag")),
+      GestureInfo(width, GestureIcons.iconGestureFThreeFingers,
+          translate("Three-Finger vertically"), translate("Mouse Wheel")),
+      GestureInfo(width, GestureIcons.iconGestureFDragUpDown_,
+          translate("Three-Finger horizontally"), translate("Mouse Wheel"),
+          quarterTurns: 1),
+      GestureInfo(width, GestureIcons.iconGestureFDrag,
+          translate("Two-Finger Move"), translate("Canvas Move")),
+      GestureInfo(width, GestureIcons.iconGesturePinch,
+          translate("Pinch to Zoom"), translate("Canvas Zoom")),
+    ];
   }
 }
 
 class GestureInfo extends StatelessWidget {
   const GestureInfo(this.width, this.icon, this.fromText, this.toText,
-      {Key? key})
+      {Key? key, this.quarterTurns = 0})
       : super(key: key);
 
   final String fromText;
   final String toText;
   final IconData icon;
   final double width;
+  final int quarterTurns;
 
   final iconSize = 35.0;
   final iconColor = MyTheme.accent;
@@ -369,10 +326,13 @@ class GestureInfo extends StatelessWidget {
         width: width,
         child: Column(
           children: [
-            Icon(
-              icon,
-              size: iconSize,
-              color: iconColor,
+            RotatedBox(
+              quarterTurns: quarterTurns,
+              child: Icon(
+                icon,
+                size: iconSize,
+                color: iconColor,
+              ),
             ),
             SizedBox(height: 6),
             Text(fromText,
