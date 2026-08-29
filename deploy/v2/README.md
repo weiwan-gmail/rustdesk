@@ -7,6 +7,7 @@ frozen v1.2.4-era snapshot vendored at `deploy/v1/src`.
 ```text
 ../flutter/web/     v2 web root (index.html, js/ protocol stack) - tracked in the main tree
 web/                server-mode delivery (static page + WS proxy to hbbs/hbbr)
+controlroom/        optional exclusive control among web viewers (off by default)
 fetch-codecs.sh     codec bundle fetcher (ogv.js / yuv-canvas / libopus)
 ```
 
@@ -55,3 +56,30 @@ cd deploy/v2/web && cp .env.example .env && docker compose up -d
 Then open `http://<server-ip>:8080`. See `deploy/v1/web/README.md` for the
 full deployment guide — the runtime contract (`config.js`, `/ws/id`,
 `/ws/relay`, `SITE_ADDRESS`, `BASE_HREF`) is identical.
+
+## Optional exclusive control room
+
+Off by default. When enabled, the first web client to a target can type and
+click; later web clients are view-only until the controller approves a
+request. Native clients are not in the room.
+
+Enable with any of:
+
+- `./rustdesk-web-v2 --control` (optional `--control-auto-approve`)
+- Compose / Docker: `CONTROL_ROOM=1` (optional `CONTROL_ROOM_AUTO_APPROVE=1`)
+- `config.js`: `control: true` (page-only; needs `/control` on the server)
+
+The overlay bar is drawn only when `control` is true. Set `controlBar: false`
+to keep the room without drawing the bar.
+
+`--control` also works on **direct mode** (`rustdesk-web-v2-direct`, default
+`:8081`): `/control` is on the same listen port as the page; there is no extra
+8099. Port 8099 is only the Docker sidecar (loopback) and
+`go run ./cmd/controlroom --demo`.
+
+The remote-session UI is a ~32px bottom capsule, not the full-page A/B/C
+debug HTML. Auto-approve on the bar is per browser/member (while that client
+is controller); `--control-auto-approve` is process-wide.
+
+See `controlroom/README.md` for ports, overlay vs demo page, auto-approve
+rules, and how to run the three-client debug walkthrough.

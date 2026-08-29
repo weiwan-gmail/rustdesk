@@ -5,7 +5,7 @@
     "dev": "vite",
     "build": "python ./gen_js_from_hbb.py > src/gen_js_from_hbb.ts && python ./ts_proto.py && tsc && vite build",
     "preview": "vite preview",
-    "test": "node --experimental-strip-types --test src/video_util.test.mjs src/paint_util.test.mjs"
+    "test": "node --experimental-strip-types --test src/video_util.test.mjs src/paint_util.test.mjs src/control_room.test.mjs"
   },
   "devDependencies": {
     "@types/node": "26.3.0",

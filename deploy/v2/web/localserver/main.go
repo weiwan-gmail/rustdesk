@@ -27,6 +27,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"rustdesk-web-controlroom"
 )
 
 //go:embed all:static
@@ -39,14 +41,16 @@ const (
 )
 
 var (
-	listen   = flag.String("listen", ":8080", "address the web page is served on")
-	server   = flag.String("server", "localhost", "RustDesk server host[:port] (default port 21116); WS ports are derived as port+2 / port+3")
-	wsID     = flag.String("ws-id", "", "explicit upstream for "+wsIDPath+" (e.g. http://host:21118), overrides --server derivation")
-	wsRelay  = flag.String("ws-relay", "", "explicit upstream for "+wsRelayPath+" (e.g. http://host:21119), overrides --server derivation")
-	basePath = flag.String("base-path", "/", "URL path the client is mounted under (must match the build's BASE_HREF)")
-	tlsCert  = flag.String("tls-cert", "", "TLS certificate file; plain HTTP when empty (fine for intranet/localhost)")
-	tlsKey   = flag.String("tls-key", "", "TLS key file")
-	open     = flag.Bool("open", false, "open the page in the system browser after start")
+	listen             = flag.String("listen", ":8080", "address the web page is served on")
+	server             = flag.String("server", "localhost", "RustDesk server host[:port] (default port 21116); WS ports are derived as port+2 / port+3")
+	wsID               = flag.String("ws-id", "", "explicit upstream for "+wsIDPath+" (e.g. http://host:21118), overrides --server derivation")
+	wsRelay            = flag.String("ws-relay", "", "explicit upstream for "+wsRelayPath+" (e.g. http://host:21119), overrides --server derivation")
+	basePath           = flag.String("base-path", "/", "URL path the client is mounted under (must match the build's BASE_HREF)")
+	tlsCert            = flag.String("tls-cert", "", "TLS certificate file; plain HTTP when empty (fine for intranet/localhost)")
+	tlsKey             = flag.String("tls-key", "", "TLS key file")
+	open               = flag.Bool("open", false, "open the page in the system browser after start")
+	control            = flag.Bool("control", false, "enable exclusive control room at /control (off by default)")
+	controlAutoApprove = flag.Bool("control-auto-approve", false, "approve every control request immediately (implies --control)")
 )
 
 func main() {
@@ -67,6 +71,10 @@ func main() {
 	mux.Handle(wsRelayPath, wsProxy(relayUpstream))
 	mux.Handle(wsRelayPath+"/", wsProxy(relayUpstream))
 	mux.HandleFunc("/config.js", serveConfig)
+	if controlOn() {
+		attachControlRoom(mux, *controlAutoApprove)
+		log.Printf("control room: /control (auto-approve=%v)", *controlAutoApprove)
+	}
 
 	static, err := fs.Sub(staticFS, "static")
 	if err != nil {
@@ -160,10 +168,24 @@ func wsProxy(upstream string) http.Handler {
 	return proxy
 }
 
+func controlOn() bool {
+	return *control || *controlAutoApprove
+}
+
+func attachControlRoom(mux *http.ServeMux, autoApprove bool) {
+	h := controlroom.NewHub(autoApprove)
+	mux.Handle("/control", h)
+}
+
 func serveConfig(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/javascript")
 	// The client talks to the same origin; this binary forwards /ws/* to the
 	// configured upstream, so no server address is baked into the page.
+	if controlOn() {
+		fmt.Fprintf(w, "window.RUSTDESK_CONFIG = {server: \"\", wsIdPath: %q, wsRelayPath: %q, control: true, controlPath: \"/control\", controlBar: true};\n",
+			wsIDPath, wsRelayPath)
+		return
+	}
 	fmt.Fprintf(w, "window.RUSTDESK_CONFIG = {server: \"\", wsIdPath: %q, wsRelayPath: %q};\n",
 		wsIDPath, wsRelayPath)
 }

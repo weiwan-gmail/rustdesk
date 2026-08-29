@@ -11,6 +11,13 @@
 //
 // wsIdPath / wsRelayPath: WS endpoint paths used for the domain / same-origin
 // cases above. Change only if your gateway maps different paths.
+//
+// control: optional exclusive control room among web viewers of the same
+//   target. Default false (sessions behave as today). Set true only when the
+//   page server also mounts /control (--control / CONTROL_ROOM=1). If the
+//   flag is true but /control is missing, the session continues without a bar.
+// controlPath: WebSocket path for the room (default "/control").
+// controlBar: when control is true, draw the overlay bar (default true).
 window.RUSTDESK_CONFIG = {
   server: "",
   wsIdPath: "/ws/id",
