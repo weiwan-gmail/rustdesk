@@ -13,6 +13,7 @@
 * `libs/enigo/` input control
 * `libs/clipboard/` clipboard
 * `libs/hbb_common/src/config.rs` all options
+* `deploy/v2/controlroom/` optional exclusive control among v2 web viewers (default off). Ports, overlay vs `--demo` page, per-client auto-approve: `deploy/v2/controlroom/README.md`
 
 ### Key Components
 - **Remote Desktop Protocol**: Custom protocol implemented in `src/rendezvous_mediator.rs` for communicating with rustdesk-server

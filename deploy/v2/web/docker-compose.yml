@@ -45,6 +45,7 @@ services:
       HBBS_HOST: hbbs
       HBBR_HOST: hbbr
       RUSTDESK_SERVER: ${RUSTDESK_SERVER:-}
+      # CONTROL_ROOM=1 starts a loopback sidecar on 8099 (not published; /control via Caddy).
       CONTROL_ROOM: ${CONTROL_ROOM:-}
       CONTROL_ROOM_AUTO_APPROVE: ${CONTROL_ROOM_AUTO_APPROVE:-}
     networks:
