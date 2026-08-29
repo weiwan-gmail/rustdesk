@@ -59,10 +59,19 @@ RUN flutter pub get \
  && mkdir -p /src/flutter/build/web/js \
  && cp -r /src/flutter/web/js/dist /src/flutter/build/web/js/dist
 
+# ---- control room sidecar (stdlib; only started when CONTROL_ROOM=1) -------
+FROM golang:1.22-bookworm AS controlroom
+WORKDIR /src
+COPY deploy/v2/controlroom /src
+RUN CGO_ENABLED=0 go test ./... \
+ && CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /rustdesk-web-controlroom ./cmd/controlroom
+
 # ---- runtime: Caddy serving static files + /ws/* proxy -----------------------
 FROM caddy:2-alpine
 COPY --from=flutter /src/flutter/build/web /srv
+COPY --from=controlroom /rustdesk-web-controlroom /usr/bin/rustdesk-web-controlroom
 COPY deploy/v2/web/Caddyfile /etc/caddy/Caddyfile
+COPY deploy/v2/web/control.handle /etc/caddy/control.handle
 COPY deploy/v2/web/docker-entrypoint.sh /docker-entrypoint.sh
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]

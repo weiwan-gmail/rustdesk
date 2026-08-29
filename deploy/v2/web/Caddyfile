@@ -22,6 +22,10 @@
 		}
 	}
 
+	# Optional exclusive control room (sidecar on 127.0.0.1:8099).
+	# The file is empty when CONTROL_ROOM is unset.
+	import /etc/caddy/control.handle
+
 	handle {
 		try_files {path} /index.html
 		file_server

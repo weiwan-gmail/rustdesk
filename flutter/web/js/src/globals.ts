@@ -76,6 +76,14 @@ export function pushEvent(name: string, payload: any) {
   pushEventRaw(name, payload);
 }
 
+export function pushSyncPeerOption(k: string, v: boolean) {
+  try {
+    pushEventRaw("sync_peer_option", { name: "sync_peer_option", k, v }, true);
+  } catch {
+    // Flutter callbacks may be missing outside the app.
+  }
+}
+
 // ========================== video begin ==========================
 // Do not go through YUVCanvas.attach + getContext("webgl") + readPixels.
 // attach() already creates a WebGL context with preserveDrawingBuffer;

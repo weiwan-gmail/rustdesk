@@ -55,3 +55,18 @@ cd deploy/v2/web && cp .env.example .env && docker compose up -d
 Then open `http://<server-ip>:8080`. See `deploy/v1/web/README.md` for the
 full deployment guide — the runtime contract (`config.js`, `/ws/id`,
 `/ws/relay`, `SITE_ADDRESS`, `BASE_HREF`) is identical.
+
+## Optional exclusive control room
+
+Off by default. When enabled, the first web client to a target can type and
+click; later web clients are view-only until the controller approves a
+request. Native clients are not in the room.
+
+Enable with any of:
+
+- `./rustdesk-web-v2 --control` (optional `--control-auto-approve`)
+- Compose / Docker: `CONTROL_ROOM=1` (optional `CONTROL_ROOM_AUTO_APPROVE=1`)
+- `config.js`: `control: true` (page-only; needs `/control` on the server)
+
+The overlay bar is drawn only when `control` is true. Set `controlBar: false`
+to keep the room without drawing the bar.

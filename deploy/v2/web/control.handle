@@ -1,0 +1,1 @@
+# Exclusive control room: filled in by docker-entrypoint.sh when CONTROL_ROOM=1.

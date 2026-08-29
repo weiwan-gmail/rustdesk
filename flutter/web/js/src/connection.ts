@@ -16,12 +16,18 @@ import {
   windowsSessionsForPicker,
 } from "./video_util";
 import { shouldPaintDecodedFrame } from "./paint_util";
+import {
+  attachControlRoom,
+  controlEnabled,
+  detachControlRoom,
+  isForcedViewer,
+} from "./control_room";
 
 export const PORT = 21116;
 // Default direct-access port of the controlled client (RENDEZVOUS_PORT + 2).
 export const DIRECT_PORT = 21118;
 // Deployment-time configuration, served as config.js next to index.html.
-// window.RUSTDESK_CONFIG = { server: "host[:port]", wsIdPath: "/ws/id", wsRelayPath: "/ws/relay", direct?: true, directPath: "/direct" }
+// window.RUSTDESK_CONFIG = { server, wsIdPath, wsRelayPath, direct?, directPath, control?, controlPath, controlBar? }
 const CONF: any = (window as any).RUSTDESK_CONFIG || {};
 
 function wsSchema(): string {
@@ -432,6 +438,7 @@ export default class Connection {
 
   close() {
     this._closed = true;
+    detachControlRoom(this);
     this._msgs = [];
     this._pendingVideoFrames = [];
     this._videoDecodersReady = undefined;
@@ -647,6 +654,7 @@ export default class Connection {
     } else {
       this.setOption("password", undefined);
     }
+    if (controlEnabled()) attachControlRoom(this);
   }
 
   setPermission(name: string, value: Boolean) {
@@ -716,6 +724,9 @@ export default class Connection {
   }
 
   getToggleOption(name: string): Boolean {
+    if (name === "view-only" && isForcedViewer(this)) {
+      return true;
+    }
     const defaultToggleTrue = [
       "show-remote-cursor",
       "privacy-mode",
@@ -739,6 +750,35 @@ export default class Connection {
     const peers = globals.getPeers();
     peers[this._id] = this._options;
     localStorage.setItem("peers", JSON.stringify(peers));
+  }
+
+  // In-memory view-only for the control room. Does not write localStorage.
+  setViewOnly(enabled: boolean) {
+    const option = message.OptionMessage.fromPartial({});
+    if (enabled) {
+      option.disable_keyboard = message.OptionMessage_BoolOption.Yes;
+      option.disable_clipboard = message.OptionMessage_BoolOption.Yes;
+      option.show_remote_cursor = message.OptionMessage_BoolOption.Yes;
+      option.enable_file_transfer = message.OptionMessage_BoolOption.No;
+      option.lock_after_session_end = message.OptionMessage_BoolOption.No;
+    } else {
+      option.disable_keyboard = message.OptionMessage_BoolOption.No;
+      option.disable_clipboard = this.getToggleOption("disable-clipboard")
+        ? message.OptionMessage_BoolOption.Yes
+        : message.OptionMessage_BoolOption.No;
+      option.show_remote_cursor = this.getToggleOption("show-remote-cursor")
+        ? message.OptionMessage_BoolOption.Yes
+        : message.OptionMessage_BoolOption.No;
+      option.enable_file_transfer = this.getToggleOption("enable-file-copy-paste")
+        ? message.OptionMessage_BoolOption.Yes
+        : message.OptionMessage_BoolOption.No;
+      option.lock_after_session_end = this.getToggleOption("lock-after-session-end")
+        ? message.OptionMessage_BoolOption.Yes
+        : message.OptionMessage_BoolOption.No;
+    }
+    const misc = message.Misc.fromPartial({ option });
+    this._ws?.sendMessage({ misc });
+    globals.pushSyncPeerOption("view-only", enabled);
   }
 
   inputKey(
@@ -883,6 +923,9 @@ export default class Connection {
   }
 
   toggleOption(name: string) {
+    if (name === "view-only" && isForcedViewer(this)) {
+      return;
+    }
     const v = !this._options[name];
     const option = message.OptionMessage.fromPartial({});
     const v2 = v ? message.OptionMessage_BoolOption.Yes : message.OptionMessage_BoolOption.No;

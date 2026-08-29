@@ -45,6 +45,8 @@ services:
       HBBS_HOST: hbbs
       HBBR_HOST: hbbr
       RUSTDESK_SERVER: ${RUSTDESK_SERVER:-}
+      CONTROL_ROOM: ${CONTROL_ROOM:-}
+      CONTROL_ROOM_AUTO_APPROVE: ${CONTROL_ROOM_AUTO_APPROVE:-}
     networks:
       - rustdesk
     ports:

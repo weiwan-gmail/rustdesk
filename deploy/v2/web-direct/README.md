@@ -50,6 +50,10 @@ cd deploy/v2/web-direct
 - `--allow-any`：关闭目标 IP 限制（**危险**：代理会变成开放 TCP 中继/SSRF，勿对公网开放）。
 - `--tls-cert/--tls-key`：可选 TLS；不提供即纯 HTTP（内网/本机免证书）。
 - `--base-path`、`--open`。
+- `--control`：打开页面侧独占控制权（`/control`）。默认关闭，行为与现在一致。
+- `--control-auto-approve`：所有申请立刻批准（隐含 `--control`）。
+
+勾选条上「下次自动批准」只对该浏览器当控制者期间有效；命令行自动批准是全站的。
 
 ## 安全说明
 

@@ -28,20 +28,24 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"rustdesk-web-controlroom"
 )
 
 //go:embed all:static
 var staticFS embed.FS
 
 var (
-	listen     = flag.String("listen", ":8081", "address the web page is served on")
-	directPort = flag.Int("direct-port", 21118, "the only allowed target port (the controlled client's direct-access port)")
-	allowCIDR  = flag.String("allow-cidr", "", "comma-separated CIDRs allowed as direct targets (default: loopback/private/link-local only)")
-	allowAny   = flag.Bool("allow-any", false, "disable target IP restrictions (DANGEROUS: the proxy can then reach arbitrary hosts)")
-	basePath   = flag.String("base-path", "/", "URL path the client is mounted under (must match the build's BASE_HREF)")
-	tlsCert    = flag.String("tls-cert", "", "TLS certificate file; plain HTTP when empty (fine for intranet/localhost)")
-	tlsKey     = flag.String("tls-key", "", "TLS key file")
-	open       = flag.Bool("open", false, "open the page in the system browser after start")
+	listen             = flag.String("listen", ":8081", "address the web page is served on")
+	directPort         = flag.Int("direct-port", 21118, "the only allowed target port (the controlled client's direct-access port)")
+	allowCIDR          = flag.String("allow-cidr", "", "comma-separated CIDRs allowed as direct targets (default: loopback/private/link-local only)")
+	allowAny           = flag.Bool("allow-any", false, "disable target IP restrictions (DANGEROUS: the proxy can then reach arbitrary hosts)")
+	basePath           = flag.String("base-path", "/", "URL path the client is mounted under (must match the build's BASE_HREF)")
+	tlsCert            = flag.String("tls-cert", "", "TLS certificate file; plain HTTP when empty (fine for intranet/localhost)")
+	tlsKey             = flag.String("tls-key", "", "TLS key file")
+	open               = flag.Bool("open", false, "open the page in the system browser after start")
+	control            = flag.Bool("control", false, "enable exclusive control room at /control (off by default)")
+	controlAutoApprove = flag.Bool("control-auto-approve", false, "approve every control request immediately (implies --control)")
 )
 
 var allowedNets []*net.IPNet
@@ -60,6 +64,11 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/direct", handleDirect)
+	if controlOn() {
+		attachControlRoom(mux, *controlAutoApprove)
+		mux.HandleFunc("/config.js", serveRuntimeConfig)
+		log.Printf("control room: /control (auto-approve=%v)", *controlAutoApprove)
+	}
 
 	static, err := fs.Sub(staticFS, "static")
 	if err != nil {
@@ -92,6 +101,20 @@ func displayPort(listen string) string {
 		return listen
 	}
 	return ":" + port
+}
+
+func controlOn() bool {
+	return *control || *controlAutoApprove
+}
+
+func attachControlRoom(mux *http.ServeMux, autoApprove bool) {
+	h := controlroom.NewHub(autoApprove)
+	mux.Handle("/control", h)
+}
+
+func serveRuntimeConfig(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/javascript")
+	fmt.Fprint(w, "window.RUSTDESK_CONFIG = {server: \"\", wsIdPath: \"/ws/id\", wsRelayPath: \"/ws/relay\", direct: true, control: true, controlPath: \"/control\", controlBar: true};\n")
 }
 
 // handleDirect bridges /direct?target=IP:PORT to the controlled client's
