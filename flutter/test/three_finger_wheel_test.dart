@@ -48,5 +48,27 @@ void main() {
       acc.reset();
       expect(acc.add(-5, 5), 1);
     });
+
+    test('vertical movement ignores smaller horizontal jitter', () {
+      final acc = ThreeFingerWheelAccumulator();
+      expect(acc.add(1, 5), 1);
+    });
+
+    test('accumulator resets after emitting a tick', () {
+      final acc = ThreeFingerWheelAccumulator();
+      expect(acc.add(0, 5), 1);
+      expect(acc.add(0, 2), isNull);
+    });
+
+    test('repeated 1px horizontal moves emit a tick every five events', () {
+      final acc = ThreeFingerWheelAccumulator();
+      var ticks = 0;
+      for (var i = 0; i < 20; i++) {
+        if (acc.add(1.0, 0) != null) {
+          ticks++;
+        }
+      }
+      expect(ticks, 4);
+    });
   });
 }
