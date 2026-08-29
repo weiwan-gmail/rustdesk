@@ -256,6 +256,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double Tap & Move", "Dobbeltklikk og flytt"),
         ("Mouse Drag", "Dra med musen"),
         ("Three-Finger vertically", "Tre fingre lodrett"),
+        ("Three-Finger horizontally", "Tre fingre vannrett"),
         ("Mouse Wheel", "Musehjul"),
         ("Two-Finger Move", "To-finger bevegelse"),
         ("Canvas Move", "Flytt lerret"),

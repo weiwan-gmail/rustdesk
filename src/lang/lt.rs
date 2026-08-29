@@ -256,6 +256,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double Tap & Move", "Dukart palieskite ir perkelkite"),
         ("Mouse Drag", "Pelės vilkimas"),
         ("Three-Finger vertically", "Trys pirštai vertikaliai"),
+        ("Three-Finger horizontally", "Trys pirštai horizontaliai"),
         ("Mouse Wheel", "Pelės ratukas"),
         ("Two-Finger Move", "Dviejų pirštų judesys"),
         ("Canvas Move", "Drobės perkėlimas"),

@@ -256,6 +256,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double Tap & Move", "Dupla érintés és mozgatás"),
         ("Mouse Drag", "Mozgatás egérrel"),
         ("Three-Finger vertically", "Három ujj függőlegesen"),
+        ("Three-Finger horizontally", "Három ujj vízszintesen"),
         ("Mouse Wheel", "Egérgörgő"),
         ("Two-Finger Move", "Kétujjas mozgatás"),
         ("Canvas Move", "Nézet módosítása"),

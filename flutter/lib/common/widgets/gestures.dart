@@ -32,7 +32,9 @@ class CustomTouchGestureRecognizer extends ScaleGestureRecognizer {
   GestureScaleUpdateCallback? onTwoFingerScaleUpdate;
   GestureScaleEndCallback? onTwoFingerScaleEnd;
 
-  // threeFingerVerticalDrag
+  // threeFingerVerticalDrag reports any three-finger drag. The consumer uses
+  // the dominant axis so both vertical and horizontal swipes can drive the
+  // mouse wheel.
   GestureDragStartCallback? onThreeFingerVerticalDragStart;
   GestureDragUpdateCallback? onThreeFingerVerticalDragUpdate;
   GestureDragEndCallback? onThreeFingerVerticalDragEnd;
