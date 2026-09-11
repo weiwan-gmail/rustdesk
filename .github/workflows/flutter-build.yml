@@ -23,11 +23,14 @@ on:
         default: true
 
 # Needed so the "Publish ... package"/"Publish Release" steps (softprops/action-gh-release)
-# can create/update releases. The calling workflow must grant at least this much too, since
-# a reusable workflow's GITHUB_TOKEN permissions can only be downgraded, never elevated,
-# relative to what the caller job allows.
+# can create/update releases, and so rustdesk-org/run-on-arch-action can push its
+# GHCR image cache (otherwise every Linux job is a cache miss and must apt-get
+# inside Ubuntu 18.04). The calling workflow must grant at least this much too,
+# since a reusable workflow's GITHUB_TOKEN permissions can only be downgraded,
+# never elevated, relative to what the caller job allows.
 permissions:
   contents: write
+  packages: write
 
 # NOTE: F-Droid builder script 'flutter/build_fdroid.sh' reads environment
 # variables from this workflow!
@@ -1484,7 +1487,40 @@ jobs:
             --volume "/opt/artifacts:/opt/artifacts"
           shell: /bin/bash
           install: |
-            apt-get update -y
+            # Canonical archive.ubuntu.com / security.ubuntu.com time out from
+            # GitHub-hosted runners (Nightly 34572175410). GHCR cache miss is
+            # non-fatal; apt exit 100 is not. Point at Azure's Ubuntu mirror
+            # (runners already use it; still hosts bionic) and retry. Leave
+            # ports.ubuntu.com (aarch64) unchanged. Keep Ubuntu 18.04 for glibc 2.27.
+            printf '%s\n' \
+              'Acquire::Retries "5";' \
+              'Acquire::http::Timeout "30";' \
+              'Acquire::https::Timeout "30";' \
+              'Acquire::http::Pipeline-Depth "0";' \
+              >/etc/apt/apt.conf.d/99ci-retries
+            if [ -f /etc/apt/sources.list ]; then
+              sed -i \
+                -e 's|http://archive.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' \
+                -e 's|http://security.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' \
+                /etc/apt/sources.list
+            fi
+            apt-get() {
+              n=0
+              while [ "$n" -lt 5 ]; do
+                if command apt-get "$@"; then
+                  return 0
+                fi
+                n=$((n+1))
+                echo "apt-get failed (attempt $n), retrying in $((n*8))s..."
+                sleep $((n*8))
+              done
+              return 1
+            }
+            if ! command apt-get update -y; then
+              echo "Azure Ubuntu archive failed; falling back to kernel.org"
+              sed -i 's|http://azure.archive.ubuntu.com/ubuntu|http://mirrors.edge.kernel.org/ubuntu|g' /etc/apt/sources.list || true
+              apt-get update -y
+            fi
             echo -e "installing deps"
             apt-get install -y \
                build-essential \
@@ -1766,7 +1802,40 @@ jobs:
             --volume "${PWD}:/workspace"
           shell: /bin/bash
           install: |
-            apt-get update
+            # Canonical archive.ubuntu.com / security.ubuntu.com time out from
+            # GitHub-hosted runners (Nightly 34572175410). GHCR cache miss is
+            # non-fatal; apt exit 100 is not. Point at Azure's Ubuntu mirror
+            # (runners already use it; still hosts bionic) and retry. Leave
+            # ports.ubuntu.com (aarch64) unchanged. Keep Ubuntu 18.04 for glibc 2.27.
+            printf '%s\n' \
+              'Acquire::Retries "5";' \
+              'Acquire::http::Timeout "30";' \
+              'Acquire::https::Timeout "30";' \
+              'Acquire::http::Pipeline-Depth "0";' \
+              >/etc/apt/apt.conf.d/99ci-retries
+            if [ -f /etc/apt/sources.list ]; then
+              sed -i \
+                -e 's|http://archive.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' \
+                -e 's|http://security.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' \
+                /etc/apt/sources.list
+            fi
+            apt-get() {
+              n=0
+              while [ "$n" -lt 5 ]; do
+                if command apt-get "$@"; then
+                  return 0
+                fi
+                n=$((n+1))
+                echo "apt-get failed (attempt $n), retrying in $((n*8))s..."
+                sleep $((n*8))
+              done
+              return 1
+            }
+            if ! command apt-get update; then
+              echo "Azure Ubuntu archive failed; falling back to kernel.org"
+              sed -i 's|http://azure.archive.ubuntu.com/ubuntu|http://mirrors.edge.kernel.org/ubuntu|g' /etc/apt/sources.list || true
+              apt-get update
+            fi
             apt-get install -y \
                build-essential \
                clang \
@@ -2027,7 +2096,38 @@ jobs:
             --volume "${PWD}:/workspace"
           shell: /bin/bash
           install: |
-            apt-get update -y
+            # Canonical archive.ubuntu.com / security.ubuntu.com time out from
+            # GitHub-hosted runners. Point at Azure's Ubuntu mirror and retry.
+            # Leave ports.ubuntu.com (aarch64) unchanged.
+            printf '%s\n' \
+              'Acquire::Retries "5";' \
+              'Acquire::http::Timeout "30";' \
+              'Acquire::https::Timeout "30";' \
+              'Acquire::http::Pipeline-Depth "0";' \
+              >/etc/apt/apt.conf.d/99ci-retries
+            if [ -f /etc/apt/sources.list ]; then
+              sed -i \
+                -e 's|http://archive.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' \
+                -e 's|http://security.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' \
+                /etc/apt/sources.list
+            fi
+            apt-get() {
+              n=0
+              while [ "$n" -lt 5 ]; do
+                if command apt-get "$@"; then
+                  return 0
+                fi
+                n=$((n+1))
+                echo "apt-get failed (attempt $n), retrying in $((n*8))s..."
+                sleep $((n*8))
+              done
+              return 1
+            }
+            if ! command apt-get update -y; then
+              echo "Azure Ubuntu archive failed; falling back to kernel.org"
+              sed -i 's|http://azure.archive.ubuntu.com/ubuntu|http://mirrors.edge.kernel.org/ubuntu|g' /etc/apt/sources.list || true
+              apt-get update -y
+            fi
             apt-get install -y git flatpak flatpak-builder
           run: |
             # disable git safe.directory
