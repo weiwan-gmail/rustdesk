@@ -71,12 +71,14 @@ release publishing) failed with:
 ```
 
 ...even though the actual build steps succeeded. The fix requires declaring
-`contents: write` in **both** places:
+`contents: write` (and, for Linux run-on-arch GHCR cache, `packages: write`)
+in **both** places:
 
-- The calling job (`permissions: contents: write` on the `run-ci` /
-  `run-flutter-*-build` job in `flutter-ci.yml`, `flutter-nightly.yml`,
-  `flutter-tag.yml`), which raises the ceiling available to grant downstream.
-- The reusable workflow itself (top-level `permissions: contents: write` in
+- The calling job (`permissions: contents: write` / `packages: write` on
+  the `run-ci` / `run-flutter-*-build` job in `flutter-ci.yml`,
+  `flutter-nightly.yml`, `flutter-tag.yml`), which raises the ceiling
+  available to grant downstream.
+- The reusable workflow itself (top-level `permissions:` in
   `flutter-build.yml`), which actually requests/uses that scope.
 
 An explicit `permissions:` block in a workflow **does** override the repo's
@@ -167,3 +169,34 @@ it uses the same common-package matrix, defaults to publishing a prerelease
 override if you do not want to overwrite `nightly`. Pull requests still
 do not publish. `Flutter Nightly Build` remains the full-matrix manual
 trigger.
+
+## Gotcha 7: Linux x86_64 run-on-arch dies on Canonical apt, not compile
+
+Linux Flutter (`ubuntu18.04`) and Linux Sciter (`ubuntu18.04`) build inside
+`rustdesk-org/run-on-arch-action`. On a GHCR cache miss the action runs
+`apt-get` in a fresh `amd64/ubuntu:18.04` image.
+
+Two things make that path fail on this fork even when the Rust/Flutter
+compile is fine:
+
+1. **GHCR cache miss is normal here.** The cached image lives at
+   `ghcr.io/weiwan-gmail/rustdesk/run-on-arch-...`. Upstream
+   `rustdesk/rustdesk` has years of cached images, so they rarely hit apt.
+   This fork did not grant `packages: write`, so the action's
+   `docker push ... || true` never published a cache. A miss is not fatal
+   (`docker pull` is already `|| true`); the following apt step is.
+2. **Canonical's `archive.ubuntu.com` / `security.ubuntu.com` time out**
+   from GitHub-hosted runners (`Connection failed` / exit 100 from
+   `run-on-arch-install.sh`). Ubuntu 18.04 is still on those hosts (not
+   `old-releases` yet — that 404s for bionic). GitHub runners already use
+   `azure.archive.ubuntu.com`, which still hosts bionic including
+   `bionic-security`. aarch64 uses `ports.ubuntu.com` and is unaffected.
+
+Do **not** bump the Linux build distro off 18.04: the published amd64
+binaries are meant to run on glibc 2.27. The install scripts rewrite
+x86 apt sources to the Azure mirror, set `Acquire::Retries`, and wrap
+`apt-get` with a short retry loop. Callers of `flutter-build.yml` must
+pass `packages: write` so a successful build can publish the GHCR
+image and skip apt next time. Each workflow name has its own cache
+image (Nightly vs Full Flutter CI), so the first run of each still
+needs apt to succeed.
