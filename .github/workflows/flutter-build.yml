@@ -547,12 +547,24 @@ jobs:
         with:
           version: ${{ env.LLVM_VERSION }}
 
+      # Must stay on this pinned nightly: Sciter x86 needs the abi_thiscall feature.
+      # rustup 1.29.1+ refuses a 32-bit rustc on 64-bit Windows unless forced
+      # (rust-lang/rustup#4935). dtolnay/rust-toolchain has no force-non-host input.
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
-        with:
-          toolchain: nightly-2023-10-13-${{ matrix.job.target }} # must use nightly here, because of abi_thiscall feature required
-          targets: ${{ matrix.job.target }}
-          components: "rustfmt"
+        shell: bash
+        run: |
+          toolchain="nightly-2023-10-13-${{ matrix.job.target }}"
+          rustup toolchain install "$toolchain" \
+            --force-non-host \
+            --target "${{ matrix.job.target }}" \
+            --component rustfmt \
+            --profile minimal \
+            --no-self-update
+          rustup default "$toolchain"
+          echo "RUSTUP_TOOLCHAIN=$toolchain" >> "$GITHUB_ENV"
+          echo "CARGO_INCREMENTAL=0" >> "$GITHUB_ENV"
+          echo "CARGO_TERM_COLOR=always" >> "$GITHUB_ENV"
+          rustc --version --verbose
 
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
