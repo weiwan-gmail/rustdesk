@@ -149,8 +149,10 @@ jobs:
     with:
       full-build: ${{ inputs.full-build }}
 
-  # Self-contained rustdesk-web / rustdesk-web-direct binaries, staged into
-  # Linux and Windows install dirs by build.py.
+  # v1 web helpers are retired (archive: deploy/v1_backup). This job no longer
+  # compiles Flutter 3.19.6 / v1 binaries. Current web client is deploy/v2.
+  # The script writes a marker artifact so Windows/Linux jobs can still
+  # download it; packaging skips helpers when per-triple dirs are empty.
   build-web-helpers:
     name: build rustdesk-web helpers
     runs-on: ubuntu-24.04
@@ -160,37 +162,8 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: "22"
-
-      - name: Install web-client build deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler python-is-python3
-
-      - name: Install Go
-        run: |
-          curl -sL https://go.dev/dl/go1.22.12.linux-amd64.tar.gz -o /tmp/go.tgz
-          sudo rm -rf /usr/local/go
-          sudo tar -C /usr/local -xzf /tmp/go.tgz
-          echo "/usr/local/go/bin" >> "$GITHUB_PATH"
-          echo "GOPATH=$HOME/go" >> "$GITHUB_ENV"
-
-      - name: Install flutter 3.19.6
-        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
-        with:
-          channel: "stable"
-          flutter-version: "3.19.6"
-
-      - name: Build rustdesk-web and rustdesk-web-direct
-        run: |
-          node -v
-          npm -v
-          go version
-          flutter --version
-          ./deploy/build-web-helpers.sh
+      - name: Stage retired-v1 marker (no v1 rebuild)
+        run: ./deploy/build-web-helpers.sh
 
       - name: Upload web helpers
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -386,8 +359,6 @@ jobs:
         run: echo "SODIUM_LIB_DIR=$VCPKG_ROOT/installed/${{ matrix.job.vcpkg-triplet }}/lib" >> "$GITHUB_ENV"
 
       - name: Build rustdesk
-        env:
-          REQUIRE_WEB_HELPERS: "1"
         run: |
           # Windows: build RustDesk
           # --hwcodec is shared by all Windows targets; per-target extras (e.g. --vram) come from the matrix
@@ -1643,7 +1614,6 @@ jobs:
             pushd /workspace
             export CARGO_INCREMENTAL=0
             export DEB_ARCH=${{ matrix.job.deb_arch }}
-            export REQUIRE_WEB_HELPERS=1
             python3 ./build.py --flutter --skip-cargo
             for name in rustdesk*??.deb; do
               mv "$name" "${name%%.deb}-${{ matrix.job.arch }}.deb"
