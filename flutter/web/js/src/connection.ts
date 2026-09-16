@@ -6,6 +6,10 @@ import * as sha256 from "fast-sha256";
 import * as globals from "./globals";
 import * as consts from "./consts";
 import { decompress, mapKey, sleep } from "./common";
+import {
+  flutterHidToMapKey,
+  flutterKeyModifiers,
+} from "./keyboard_map";
 import { version } from "./gen_js_from_hbb";
 import {
   enqueueVideoFrame,
@@ -799,6 +803,34 @@ export default class Connection {
     key_event.down = down;
     key_event.press = press;
     key_event.modifiers = this.getMod(alt, ctrl, shift, command);
+    this._ws?.sendMessage({ key_event });
+  }
+
+  // Flutter grab (input source 2 / map mode). Sends scan codes on Windows so
+  // Winlogon/lock-screen injection works; Legacy chr uses KEYEVENTF_UNICODE.
+  inputFlutterKey(usbHid: number, down: boolean, lockModes: number) {
+    const platform = this._peerInfo?.platform || "";
+    const mapped = flutterHidToMapKey(usbHid, platform);
+    if (!mapped) return;
+    if (mapped.kind === "pause") {
+      const key_event = message.KeyEvent.fromPartial({
+        down,
+        control_key: message.ControlKey.Pause,
+        mode: message.KeyboardMode.Legacy,
+      });
+      this._ws?.sendMessage({ key_event });
+      return;
+    }
+    const modifiers = flutterKeyModifiers(usbHid, lockModes).map((name) =>
+      name === "CapsLock" ? message.ControlKey.CapsLock : message.ControlKey.NumLock
+    );
+    const key_event = message.KeyEvent.fromPartial({
+      down,
+      press: false,
+      chr: mapped.chr,
+      mode: message.KeyboardMode.Map,
+      modifiers,
+    });
     this._ws?.sendMessage({ key_event });
   }
 

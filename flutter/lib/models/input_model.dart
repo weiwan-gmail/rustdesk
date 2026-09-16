@@ -741,9 +741,8 @@ class InputModel {
     if (!isInputSourceFlutter) {
       if (isDesktop) {
         return KeyEventResult.handled;
-      } else if (isWeb) {
-        return KeyEventResult.ignored;
       }
+      // Web has no rdev grab. Fall through so Flutter emits KeyEvents.
     }
 
     if (_relativeMouse.handleRawKeyEvent(e)) {
@@ -826,9 +825,8 @@ class InputModel {
     if (!isInputSourceFlutter) {
       if (isDesktop) {
         return KeyEventResult.handled;
-      } else if (isWeb) {
-        return KeyEventResult.ignored;
       }
+      // Web has no rdev grab. Fall through so Flutter emits KeyEvents.
     }
     if (isWindows || isLinux) {
       // Ignore meta keys. Because flutter window will loose focus if meta key is pressed.
