@@ -933,11 +933,16 @@ class RustdeskImpl {
   String mainGetInputSource({dynamic hint}) {
     final inputSource =
         js.context.callMethod('getByName', ['option:local', 'input-source']);
+    // Web has no rdev/JS grab (source 1). enter_or_leave is a no-op, so source 1
+    // previously dropped every physical key. Always use Flutter grab.
     // // js grab mode
     // export const CONFIG_INPUT_SOURCE_1 = "Input source 1";
     // // flutter grab mode
     // export const CONFIG_INPUT_SOURCE_2 = "Input source 2";
-    return inputSource != '' ? inputSource : 'Input source 1';
+    if (inputSource == '' || inputSource == 'Input source 1') {
+      return 'Input source 2';
+    }
+    return inputSource;
   }
 
   Future<void> mainSetInputSource(

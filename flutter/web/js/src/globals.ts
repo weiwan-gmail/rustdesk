@@ -689,10 +689,15 @@ window.setByName = (name: string, value?: any): any => {
     case "enter_or_leave":
       // Pointer lock / focus bookkeeping is handled by the Flutter side.
       break;
-    case "flutter_key_event":
-      // Raw flutter key events are only used with input source 2, which the
-      // web client does not enable (mainGetInputSource defaults to source 1).
+    case "flutter_key_event": {
+      if (!conn) break;
+      const v = JSON.parse(value);
+      const usbHid = parseInt(v.usb_hid ?? v.usbHid ?? "0", 10);
+      if (!Number.isFinite(usbHid) || usbHid <= 0) break;
+      const lockModes = parseInt(v.lock_modes ?? v.lockModes ?? "0", 10) || 0;
+      conn.inputFlutterKey(usbHid, v.down == "true", lockModes);
       break;
+    }
     case "audit_guid":
       localStorage.setItem("audit_guid", value);
       break;
