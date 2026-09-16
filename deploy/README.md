@@ -7,7 +7,7 @@ packaging on the v1 tree.
 ```text
 v2/           current web client (builds the repo's flutter/ tree)
 v1_backup/    retired v1 archive — keep for history, do not develop against it
-web-helpers/  staged desktop-package helpers (v2; v1 is no longer built)
+web-helpers/  desktop-package helper staging (v1 no longer built; v2 packaging is separate)
 ```
 
 Start here:
