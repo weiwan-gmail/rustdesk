@@ -64,3 +64,7 @@ cd deploy/v2/web-direct
 ## 安全说明
 
 `/direct` 是一个 WS→TCP 桥。默认只允许**回环/私网/链路本地**目标且只允许 `21118` 端口，防止它沦为开放代理。不要用 `--allow-any` 把它暴露到不可信网络。
+
+## Design notes / 以后讨论
+
+- [同一被控主机上 web 端短时间大量连接](docs/connection-concurrency.md)（讨论稿，未实施）
