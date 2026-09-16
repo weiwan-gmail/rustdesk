@@ -1506,7 +1506,7 @@ jobs:
 
       # vcpkg 2026.07.29's SPDX scripts require CMake 4.3+, but this ARM64 runner selects CMake 3.31.
       - name: Install CMake for vcpkg on Linux ARM64
-        if: matrix.job.arch == 'aarch64' && env.UPLOAD_ARTIFACT == 'true'
+        if: matrix.job.arch == 'aarch64'
         run: |
           python3 -m pip install --user "cmake==${VCPKG_CMAKE_VERSION}"
           user_base="$(python3 -m site --user-base)"
