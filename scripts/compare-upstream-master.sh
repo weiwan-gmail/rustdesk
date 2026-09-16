@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Compare origin/develop (or HEAD) against rustdesk/rustdesk master.
-# Prints ahead/behind, overlapping paths, and content conflicts from merge-tree.
 # Usage: scripts/compare-upstream-master.sh [ours-ref] [theirs-ref]
+# Prints ahead/behind and content-conflict paths from git merge-tree.
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
