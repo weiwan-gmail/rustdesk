@@ -44,9 +44,10 @@ flatpak/repo/**
 flatpak/*.flatpak
 # bridge file
 lib/generated_bridge.dart
-# Vendored v1 web client assets (root *png/*svg would otherwise drop them)
-!deploy/v1/src/**/*.png
-!deploy/v1/src/**/*.svg
+# Vendored v1 web client assets (root *png/*svg would otherwise drop them).
+# Path is deploy/v1_backup (retired archive); do not add a live deploy/v1.
+!deploy/v1_backup/src/**/*.png
+!deploy/v1_backup/src/**/*.svg
 # v2 web client icons (same reason)
 !flutter/web/icons/*.png
 # vscode devcontainer

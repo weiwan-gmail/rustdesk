@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build the RustDesk web client (Flutter Web + JS protocol stack) from the
-# vendored v1 source at deploy/v1/src.
+# vendored v1 source at deploy/v1_backup/src (retired archive).
 #
 # Usage:
 #   ./build-web-client.sh                 # full build into ./dist

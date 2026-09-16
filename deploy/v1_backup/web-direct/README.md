@@ -1,3 +1,7 @@
+> **Retired archive.** This is `deploy/v1_backup/web-direct`, not a supported
+> product. Future development uses `deploy/v2/web-direct` only.
+> See [`../README.md`](../README.md).
+
 # rustdesk-web-direct（直连版 Web 客户端）
 
 浏览器里**按 IP 直连**被控 RustDesk 客户端，**无需运行 hbbs/hbbr 服务器**。类似 noVNC 的 websockify 模式：一个自包含二进制，既发页面又把浏览器的 WebSocket 桥接到被控端的直连 TCP 端口。
@@ -7,7 +11,7 @@
         :8081        (页面 + WS→TCP 桥)            (开了「直接IP访问」)
 ```
 
-与 `deploy/v1/web`（服务器模式）完全独立：不同 exe、不同目录，可同机不同端口并存。两者共用 `deploy/v1/src`，直连由本目录 `config.js` 的 `direct: true` 打开。
+与 `deploy/v1_backup/web`（服务器模式）完全独立：不同 exe、不同目录，可同机不同端口并存。两者共用 `deploy/v1_backup/src`，直连由本目录 `config.js` 的 `direct: true` 打开。
 
 ## 与服务器模式的区别
 
@@ -22,7 +26,7 @@
 ## 使用
 
 ```bash
-cd deploy/v1/web-direct
+cd deploy/v1_backup/web-direct
 ./build.sh                 # 构建 web 客户端并编译当前平台二进制
 ./build.sh --all           # 交叉编译 linux/windows/macOS 单文件
 
@@ -70,11 +74,11 @@ cd deploy/v1/web-direct
 
 - 被控端直连端口说 RustDesk 裸 TCP 协议，消息用变长小端长度头分帧（`libs/hbb_common/src/bytes_codec.rs`：`header = (len<<2)|(head_len-1)`）。浏览器只会 WebSocket，所以 `server/websocket.go` 手写了一个极简 RFC6455 服务端（纯标准库），`server/bridge.go` 在 WS 帧与 RustDesk 长度头帧之间转换，不触碰 protobuf 内容。
 - 直连跳过 rendezvous/relay 与 secure 签名握手（被控 `secure=false`）：连上后被控先发 `Hash{salt,challenge}`，主控回 `LoginRequest`（密码哈希 `sha256(sha256(pwd+salt)+challenge)`），之后进入与服务器模式完全相同的会话协议（视频/输入/剪贴板）。
-- Web 客户端与服务器模式共用 `deploy/v1/src`。本目录构建时写入 `direct: true` 的 `config.js`，`connection.ts` 的 `start()` 才会把 IP 识别为 `_startDirect`（走 `/direct`）。
+- Web 客户端与服务器模式共用 `deploy/v1_backup/src`。本目录构建时写入 `direct: true` 的 `config.js`，`connection.ts` 的 `start()` 才会把 IP 识别为 `_startDirect`（走 `/direct`）。
 
 ## 已知限制
 
 - 仅 IP 直连、仅局域网/IP 可达；无 ID 寻址、无 NAT 穿透。
 - 明文协议（与原生直连一致），只在可信网络使用。
 - 文件传输、终端、语音等未在 web 端实现（同上游 v1）。
-- 其余与 `deploy/v1/web` 相同（v1.2.4 时代 UI、音频依赖重建的 libopus.js）。
+- 其余与 `deploy/v1_backup/web` 相同（v1.2.4 时代 UI、音频依赖重建的 libopus.js）。

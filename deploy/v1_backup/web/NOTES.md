@@ -1,3 +1,7 @@
+> **Retired archive.** Historical notes for the v1 web client. Do not treat
+> this as current guidance. The supported path is `deploy/v2` /
+> `deploy/v2/web-direct`.
+
 # Web 客户端实施经验与踩坑记录
 
 本文记录本次私有部署 Web 客户端落地过程中**非显而易见**的技术发现与调试经验，供后续维护者参考。阅读前建议先看 [README.md](README.md) 的「构建原理」一节。
@@ -8,7 +12,8 @@
   - **v1**：Flutter Web UI + TypeScript 协议栈（`flutter/web/js/`），曾长期跑在 rustdesk.com/web。
   - **v2**：当前 master 的 `flutter/lib` 里只有 Dart 侧 shim（`flutter/lib/web/bridge.dart`、`web_model.dart`），通过 `window.getByName/setByName` 调用一个 **JS 协议核心**——但这个 JS 核心**从未开源**（bridge.dart 里 142 个 `UnimplementedError`）。官方 rustdesk.com/web 现在跑的就是闭源 v2。
 - `flutter/web/` 于 2025-07（提交 `5faf0ad3c`）被删除并加入 `.gitignore`。
-- **结论**：不要试图在当前 master 上「补齐 v2」——那是重写整个 JS 协议栈。v1 已 vendor 在 `deploy/v1/src`。
+- **结论（当时）**：不要试图在当时的 master 上「补齐 v2」。v1 已 vendor 在 `deploy/v1_backup/src`。
+  **现在**：v2 是唯一支持路径（`deploy/v2` / `deploy/v2/web-direct`）；本笔记只作归档，不要按它开发。
 
 ### 关键提交定位
 
@@ -18,7 +23,7 @@
 
 ## 二、构建踩坑（2026 年工具链 vs 2024 年代码）
 
-这些是「老代码 + 新工具链」的典型位腐烂（bitrot），`deploy/v1/src/fetch-codecs.sh` 和 vendor 树里的 `package.json` 固定就是为了解决它们：
+这些是「老代码 + 新工具链」的典型位腐烂（bitrot），`deploy/v1_backup/src/fetch-codecs.sh` 和 vendor 树里的 `package.json` 固定就是为了解决它们：
 
 1. **`@types/node` / TypeScript**：`ts-proto > protobufjs` 间接依赖 `@types/node`。2024 年的 `typescript@4.4`/`4.9` 无法解析 2026 年 `@types/node@26` 的 `ffi.d.ts`（需要 TS 5.2+）→ `TS1005`；当时只能钉死 `16.18.68`。现在协议栈钉 **`typescript@6.0.3`**（最后一代 JS 编译器，给 TS 7 铺路；7.0 还没有 Compiler API），因此可以改钉当前的 `@types/node@26.3.0`（npm `ts6.0` dist-tag）。`skipLibCheck` 挡不住语法错误，所以仍用直接依赖 + npm `overrides`。`moduleResolution` 从已弃用的 `Node`（node10）改为 `bundler`，不要用 `"ignoreDeprecations": "6.0"`。`tsconfig` 显式 `"types": ["node"]`（TS 6 默认 `types: []`；ts-proto 生成代码会读 `globalThis.Buffer`）。TS 6 的 DOM `WebSocket.send` 要 `BufferSource`，protobuf/sodium 的 `Uint8Array` 默认 `ArrayBufferLike`，所以 `websock.ts` 发送处做类型断言（不改线上字节）。这些版本已经写进 vendor 的 `package.json`。
 2. **`libsodium`/`libsodium-wrappers`**：`^0.7.9` 解析到 0.7.16，其 ESM 布局里 `libsodium-wrappers.mjs` 相对导入 `./libsodium.mjs`，但该文件在另一个包里。**解法**：精确固定 `0.7.13`（2024-05 时代的版本），`vite.config.js` 再把两个包别名到 CJS `dist/modules/`。注意 yarn1 的 `resolutions` 用 `**/libsodium` 没生效，直接改 `dependencies` 里的版本号最可靠。
@@ -32,7 +37,7 @@
 
 ## 三、运行时缺陷（上游该提交本身就坏的）
 
-`96f41fcc` 是「custom client 重构」中途的提交，web 端有几处真 bug，已修进 `deploy/v1/src`：
+`96f41fcc` 是「custom client 重构」中途的提交，web 端有几处真 bug，已修进 `deploy/v1_backup/src`：
 
 1. **首页灰屏**：`WebHomePage.build` 同步调用 `bind.mainGetAppNameSync()`，而 web bridge 里它是 `throw UnimplementedError()` → release 模式白屏/灰屏无任何提示。同类还有 `mainIsOptionFixed`（PeerTabPage）、`mainLoadLanPeers` 等。**重构前的旧代码用的是硬编码 `Text("RustDesk (Beta)")`，所以官方旧构建是好的**——这也是定位思路：对比重构前后文件差异。
 2. **`SetByName` 大小写笔误**：`sessionPeerOption` 调了 `js.context.callMethod('SetByName', ...)`（大写 S），JS 只有 `setByName` → NoSuchMethod。

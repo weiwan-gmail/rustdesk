@@ -1,3 +1,7 @@
+> **Retired archive.** This is `deploy/v1_backup/web`, not a supported
+> product. Future development uses `deploy/v2` / `deploy/v2/web-direct` only.
+> See [`../README.md`](../README.md).
+
 # RustDesk Web 客户端（私有部署）
 
 在浏览器里直接使用 RustDesk 主控端，类似官方 <https://rustdesk.com/web/>，但完全私有部署：页面由你自己提供服务，连接走你自己的 `hbbs`/`hbbr` 服务器，不接触官方服务器。
@@ -24,7 +28,7 @@
 需要 Docker 与 Docker Compose。
 
 ```bash
-cd deploy/v1/web
+cd deploy/v1_backup/web
 cp .env.example .env      # 按需修改
 docker compose up -d
 ```
@@ -60,7 +64,7 @@ WS 路径与页面路径相互独立：页面在子路径，WS 端点仍在站�
 一个自包含的可执行文件，内嵌全部页面资源，无需 Docker：
 
 ```bash
-cd deploy/v1/web/localserver
+cd deploy/v1_backup/web/localserver
 ./build.sh                 # 先构建 web 客户端（若 dist/ 不存在），再编译当前平台二进制
 ./build.sh --all           # 或交叉编译 linux/amd64、linux/arm64、windows、macOS 单文件
 ```
@@ -97,7 +101,7 @@ cd deploy/v1/web/localserver
 
 ## 构建原理（维护者向）
 
-上游在 2025-07 删除了开源的 `flutter/web/`（v1），当前 master 只剩 v2 的 Dart 侧 shim，配套的 v2 JS 协议核心从未开源。v1 源码已经 vendor 在 `deploy/v1/src`（冻结提交 `96f41fcc02dd…`，v1.2.4 时代，Flutter 3.19.6，私有化与直连修复已打进树内，不再保留 `.patch` 文件）。构建脚本直接编译那棵树：
+上游在 2025-07 删除了开源的 `flutter/web/`（v1），当前 master 只剩 v2 的 Dart 侧 shim，配套的 v2 JS 协议核心从未开源。v1 源码已经 vendor 在 `deploy/v1_backup/src`（冻结提交 `96f41fcc02dd…`，v1.2.4 时代，Flutter 3.19.6，私有化与直连修复已打进树内，不再保留 `.patch` 文件）。构建脚本直接编译那棵树：
 
 - `js/src/connection.ts`：服务器地址解析对齐原生客户端 `check_ws()`（同源/域名走 `/ws/*` 路径，IP 走端口偏移）；默认服务器改由运行时 `config.js` 注入；删除启动时探测官方 `rs-*.rustdesk.com` 的 `testDelay()`。IP → `/direct` 仅当 `RUSTDESK_CONFIG.direct` 为真（本目录的 `config.js` 不设该标志，行为与旧 0001-only 构建一致）。
 - `js/src/websock.ts`：TS 6 下 protobuf/sodium 的 `Uint8Array` 默认 `ArrayBufferLike`，DOM `WebSocket.send` 要 `BufferSource`，发送处做类型断言（不改线上字节）。
@@ -107,9 +111,9 @@ cd deploy/v1/web/localserver
 - `js/package.json`：固定 `libsodium`/`libsodium-wrappers@0.7.13`、`typescript@6.0.3`、`vite@7.3.6`、`@types/node@26.3.0`（npm `overrides` 钉死；0.7.16+ 的 ESM 会拆出本包没有的 `./libsodium.mjs`；不要上 Vite 8，Rolldown 不再支持这里用的 function-form `manualChunks`）。`tsconfig.json` 使用 `moduleResolution: "bundler"`、`skipLibCheck`、`stableTypeOrdering`、`types: ["node"]`（给 TS 7 铺路；本栈不装 7.0，因其尚无 Compiler API）。`vite.config.js` 把 sodium 别名到 CJS 构建，并用 `manualChunks` 打出 Flutter `index.html` 写死的 `js/dist/index.js` + `js/dist/vendor.js`（Vite 2.9 起不再默认拆 vendor，`splitVendorChunkPlugin` 在 Vite 7 已删除）。
 - `index.html`：加载 `config.js`。
 
-解码器包（原 `web_deps.tar.gz` 已 404）由 `deploy/v1/src/fetch-codecs.sh` 重建：ogv.js 1.8.6 官方 release zip（含 SIMD，npm 包没有）、npm `yuv-canvas@1.2.6`（用 esbuild 打成浏览器 IIFE）、npm `opusscript@0.1.1` 生成 `libopus.js` 音频 worker。
+解码器包（原 `web_deps.tar.gz` 已 404）由 `deploy/v1_backup/src/fetch-codecs.sh` 重建：ogv.js 1.8.6 官方 release zip（含 SIMD，npm 包没有）、npm `yuv-canvas@1.2.6`（用 esbuild 打成浏览器 IIFE）、npm `opusscript@0.1.1` 生成 `libopus.js` 音频 worker。
 
-本地构建依赖：node + npm、python3、yarn、protoc、Flutter 3.19.6（`FLUTTER_ROOT` 或 PATH）。`Dockerfile.web` 为一体化容器构建（build context 是 `deploy/v1`），无本地依赖。
+本地构建依赖：node + npm、python3、yarn、protoc、Flutter 3.19.6（`FLUTTER_ROOT` 或 PATH）。`Dockerfile.web` 为一体化容器构建（build context 是 `deploy/v1_backup`），无本地依赖。
 
 ## 实施经验与踩坑
 

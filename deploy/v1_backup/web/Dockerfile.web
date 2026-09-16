@@ -2,7 +2,7 @@
 # All-in-one build of the RustDesk web client image from vendored v1 source:
 #   codec bundle -> JS protocol stack -> flutter build web -> Caddy.
 #
-# Build context must be deploy/v1 (the parent of this file):
+# Build context must be deploy/v1_backup (the parent of this file):
 #   docker build -f web/Dockerfile.web -t rustdesk-web .
 #   docker run -p 8080:80 -e SITE_ADDRESS=http://:80 rustdesk-web
 #
