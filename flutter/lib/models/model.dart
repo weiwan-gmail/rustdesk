@@ -1985,33 +1985,8 @@ class ImageModel with ChangeNotifier {
     _webDecodingRgba = false;
   }
 
-  onRgba(int display, Uint8List rgba) async {
-    try {
-      await decodeAndUpdate(display, rgba);
-    } catch (e) {
-      debugPrint('onRgba error: $e');
-    }
-    platformFFI.nextRgba(sessionId, display);
-  }
-
-  decodeAndUpdate(int display, Uint8List rgba) async {
-    final pid = parent.target?.id;
-    final rect = parent.target?.ffiModel.pi.getDisplayRect(display);
-    final image = await img.decodeImageFromPixels(
-      rgba,
-      rect?.width.toInt() ?? 0,
-      rect?.height.toInt() ?? 0,
-      isWeb | isWindows | isLinux
-          ? ui.PixelFormat.rgba8888
-          : ui.PixelFormat.bgra8888,
-    );
-    if (parent.target?.id != pid) return;
-    await update(image);
-  }
-
-  // Web VP9/ogv paint. Prefer the decoded frame size: PeerInfo can still
-  // be the desktop default (1080x720) or 0 when the first frame arrives.
-  // Kept off decodeAndUpdate so an upstream merge can take that function.
+  // Prefer the decoded frame size. PeerInfo can still be the desktop
+  // default (1080x720) or 0 when the first VP9 frame arrives.
   Future<void> _decodeWebRgba(
       int display, Uint8List rgba, int width, int height) async {
     final pid = parent.target?.id;
@@ -2033,6 +2008,30 @@ class ImageModel with ChangeNotifier {
       rgba,
       w,
       h,
+      isWeb | isWindows | isLinux
+          ? ui.PixelFormat.rgba8888
+          : ui.PixelFormat.bgra8888,
+    );
+    if (parent.target?.id != pid) return;
+    await update(image);
+  }
+
+  onRgba(int display, Uint8List rgba) async {
+    try {
+      await decodeAndUpdate(display, rgba);
+    } catch (e) {
+      debugPrint('onRgba error: $e');
+    }
+    platformFFI.nextRgba(sessionId, display);
+  }
+
+  decodeAndUpdate(int display, Uint8List rgba) async {
+    final pid = parent.target?.id;
+    final rect = parent.target?.ffiModel.pi.getDisplayRect(display);
+    final image = await img.decodeImageFromPixels(
+      rgba,
+      rect?.width.toInt() ?? 0,
+      rect?.height.toInt() ?? 0,
       isWeb | isWindows | isLinux
           ? ui.PixelFormat.rgba8888
           : ui.PixelFormat.bgra8888,
