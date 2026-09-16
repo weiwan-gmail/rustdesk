@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
+import 'package:get/get.dart';
 
 /// Local multiline dialog: edit on the client, then inject text on the remote
 /// via [bind.sessionInputString] after the user confirms.
