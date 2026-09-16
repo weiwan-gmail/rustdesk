@@ -2000,8 +2000,6 @@ class ImageModel with ChangeNotifier {
     _webDecodingRgba = false;
   }
 
-  // Prefer the decoded frame size. PeerInfo can still be the desktop
-  // default (1080x720) or 0 when the first VP9 frame arrives.
   Future<void> _decodeWebRgba(
       int display, Uint8List rgba, int width, int height) async {
     final pid = parent.target?.id;

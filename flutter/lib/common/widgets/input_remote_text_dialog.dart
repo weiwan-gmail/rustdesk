@@ -8,7 +8,6 @@ void showInputRemoteTextDialog({
   required SessionID sessionId,
   required OverlayDialogManager dialogManager,
 }) {
-  // Compose locally, then inject via KeyEvent.seq on confirm.
   final controller = TextEditingController();
   dialogManager.show((setState, close, context) {
     submit() {
@@ -52,7 +51,6 @@ void showInputRemoteTextDialog({
           onPressed: submit,
         ),
       ],
-      // Do not set onSubmit: Enter must insert newlines in the multiline field.
       onCancel: close,
     );
   });
