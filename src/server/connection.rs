@@ -7170,7 +7170,7 @@ mod test {
             .await
             .unwrap();
         let host = listener.local_addr().unwrap().to_string();
-        let controller = hbb_common::socket_client::connect_tcp(host, 3000)
+        let controller = hbb_common::socket_client::connect_tcp_local(host, None, 3000)
             .await
             .unwrap();
         let (accepted, addr) = listener.accept().await.unwrap();
