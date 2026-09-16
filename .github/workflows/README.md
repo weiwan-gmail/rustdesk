@@ -200,3 +200,14 @@ pass `packages: write` so a successful build can publish the GHCR
 image and skip apt next time. Each workflow name has its own cache
 image (Nightly vs Full Flutter CI), so the first run of each still
 needs apt to succeed.
+
+## Gotcha 8: v1 web helpers are retired
+
+`build-web-helpers` used to compile `deploy/v1` with Flutter 3.19.6 and
+stage `rustdesk-web` / `rustdesk-web-direct` into Linux/Windows packages.
+That tree is now `deploy/v1_backup` (archive only). The job no longer
+installs Flutter 3.19.6 or builds v1 binaries; `REQUIRE_WEB_HELPERS` is
+unset so packaging skips empty helper dirs.
+
+Current web client: `deploy/v2/web` and `deploy/v2/web-direct`. Do not
+point this job back at `v1_backup`.

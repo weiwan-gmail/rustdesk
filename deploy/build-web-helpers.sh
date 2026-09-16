@@ -1,47 +1,47 @@
 #!/usr/bin/env bash
-# Build rustdesk-web and rustdesk-web-direct for the Linux/Windows package
-# triples and stage them under deploy/web-helpers/<os-arch>/.
+# Stage rustdesk-web-v2 / rustdesk-web-v2-direct into
+# deploy/web-helpers/<os-arch>/ for Linux and Windows desktop packages.
 #
 #   ./deploy/build-web-helpers.sh
 #
-# Requires: Go 1.22+, Node/npm, Flutter 3.19.6 on PATH (or FLUTTER_ROOT).
+# v1 is retired (archive: deploy/v1_backup). This script must not build that
+# tree. Helpers come from deploy/v2 only.
+#
+# This script does not compile the v2 client (that is a separate v2 build).
+# It writes a marker so CI can still upload the web-helpers artifact; desktop
+# packaging skips helpers when the per-triple dirs are empty.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="$ROOT/deploy/web-helpers"
-WEB="$ROOT/deploy/v1/web"
-DIRECT="$ROOT/deploy/v1/web-direct"
+V1_ARCHIVE="$ROOT/deploy/v1_backup"
 
-echo ">> building rustdesk-web (server mode)"
-"$WEB/build-web-client.sh"
-"$WEB/localserver/build.sh" --all
+if [ -d "$ROOT/deploy/v1" ]; then
+  echo "!! deploy/v1 must not exist; v1 lives only at deploy/v1_backup" >&2
+  exit 1
+fi
 
-echo ">> building rustdesk-web-direct"
-"$DIRECT/build.sh" --all
+if [ ! -d "$V1_ARCHIVE" ]; then
+  echo "!! expected retired archive at $V1_ARCHIVE" >&2
+  exit 1
+fi
 
-# Extra Windows arm64 Go cross-compile (not in the stock --all lists).
-echo ">> extra windows/arm64 binaries"
-(cd "$WEB/localserver" && GOOS=windows GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o rustdesk-web-windows-arm64.exe .)
-(cd "$DIRECT/server" && GOOS=windows GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o "$DIRECT/rustdesk-web-direct-windows-arm64.exe" .)
+mkdir -p "$OUT"
+cat > "$OUT/README.md" <<'EOF'
+# deploy/web-helpers
 
-stage() { # <src> <dest-dir> <dest-name>
-  mkdir -p "$2"
-  cp -f "$1" "$2/$3"
-  chmod +x "$2/$3" 2>/dev/null || true
-  echo "   $1 -> $2/$3"
-}
+v1 web helpers are **retired**. Do not rebuild them from `deploy/v1_backup`.
 
-rm -rf "$OUT/linux-amd64" "$OUT/linux-arm64" "$OUT/windows-amd64" "$OUT/windows-arm64"
+Build and run the current web client from:
 
-stage "$WEB/localserver/rustdesk-web"                "$OUT/linux-amd64"    rustdesk-web
-stage "$WEB/localserver/rustdesk-web-linux-arm64"    "$OUT/linux-arm64"    rustdesk-web
-stage "$WEB/localserver/rustdesk-web.exe"            "$OUT/windows-amd64"  rustdesk-web.exe
-stage "$WEB/localserver/rustdesk-web-windows-arm64.exe" "$OUT/windows-arm64" rustdesk-web.exe
+- `deploy/v2/web` (server mode, `rustdesk-web-v2`)
+- `deploy/v2/web-direct` (direct IP mode, `rustdesk-web-v2-direct`)
 
-stage "$DIRECT/rustdesk-web-direct"                  "$OUT/linux-amd64"    rustdesk-web-direct
-stage "$DIRECT/rustdesk-web-direct-linux-arm64"      "$OUT/linux-arm64"    rustdesk-web-direct
-stage "$DIRECT/rustdesk-web-direct.exe"              "$OUT/windows-amd64"  rustdesk-web-direct.exe
-stage "$DIRECT/rustdesk-web-direct-windows-arm64.exe" "$OUT/windows-arm64" rustdesk-web-direct.exe
+Desktop packages skip bundling helpers until a v2 packaging job stages
+binaries into the per-triple directories below.
+EOF
 
-echo ">> staged under $OUT"
+echo ">> v1 is retired (archive: $V1_ARCHIVE)"
+echo ">> current web client: deploy/v2/web and deploy/v2/web-direct"
+echo ">> wrote $OUT/README.md (no v1 binaries staged)"
 find "$OUT" -type f | sort

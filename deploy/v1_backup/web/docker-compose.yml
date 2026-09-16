@@ -6,7 +6,7 @@
 # host: browsers reach them only through the web service (Caddy), which sets
 # X-Real-IP itself. Publishing them would let anyone spoof client IPs.
 #
-# Image build context is deploy/v1 (parent), so the vendored src/ is visible.
+# Image build context is deploy/v1_backup (parent), so the vendored src/ is visible.
 services:
   hbbs:
     image: rustdesk/rustdesk-server:latest

@@ -70,7 +70,11 @@ def web_helpers_triple():
 
 
 def stage_web_helpers(dest_dir):
-    """Copy rustdesk-web / rustdesk-web-direct into the package install dir."""
+    """Copy staged web helpers into the package install dir.
+
+    v1 helpers are retired. Missing helper dirs are skipped unless
+    REQUIRE_WEB_HELPERS=1 (desktop CI no longer requires them).
+    """
     triple = web_helpers_triple()
     if not triple:
         return

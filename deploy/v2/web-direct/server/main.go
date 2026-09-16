@@ -6,9 +6,9 @@
 // It serves the embedded v2 web client and bridges /direct WebSocket
 // connections to the controlled client's direct-access TCP port.
 //
-// This server is version-agnostic delivery infrastructure, shared with the v1
-// direct delivery (deploy/v1/web-direct/server); only the embedded static
-// client differs (here: the current flutter/ tree build).
+// This server is version-agnostic delivery infrastructure. The retired v1
+// counterpart is archived at deploy/v1_backup/web-direct/server; only the
+// embedded static client differs (here: the current flutter/ tree build).
 //
 // Pure standard library, no third-party dependencies.
 //

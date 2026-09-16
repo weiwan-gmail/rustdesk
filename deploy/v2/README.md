@@ -1,17 +1,17 @@
 # deploy/v2
 
 V2 web client: built from the repository's **current** `flutter/` tree
-(Flutter 3.24.5, the same code as the desktop client), unlike v1 which is a
-frozen v1.2.4-era snapshot vendored at `deploy/v1/src`.
+(Flutter 3.24.5, the same code as the desktop client). This is the only
+supported web-client path. The frozen v1.2.4-era snapshot lives at
+`deploy/v1_backup` as an archive — **do not develop against v1**.
 
 ```text
 ../flutter/web/     v2 web root (index.html, js/ protocol stack) - tracked in the main tree
 web/                server-mode delivery (static page + WS proxy to hbbs/hbbr)
+web-direct/         direct-mode delivery (IP → /direct, no hbbs/hbbr)
 controlroom/        optional exclusive control among web viewers (off by default)
 fetch-codecs.sh     codec bundle fetcher (ogv.js / yuv-canvas / libopus)
 ```
-
-v1 is kept untouched under `deploy/v1` for comparison.
 
 ## What v2 is
 
@@ -38,8 +38,8 @@ v1 is kept untouched under `deploy/v1` for comparison.
 
 ## Build & run
 
-Same delivery style as v1 (`deploy/v1/web`), but the build context is the
-repository root:
+Server-mode delivery (static page + WS proxy to hbbs/hbbr). The Docker
+build context is the repository root:
 
 ```bash
 # local build (needs Flutter 3.24.5, node, python3, protoc)
@@ -53,9 +53,9 @@ docker run -p 8080:80 -e SITE_ADDRESS=http://:80 rustdesk-web-v2
 cd deploy/v2/web && cp .env.example .env && docker compose up -d
 ```
 
-Then open `http://<server-ip>:8080`. See `deploy/v1/web/README.md` for the
-full deployment guide — the runtime contract (`config.js`, `/ws/id`,
-`/ws/relay`, `SITE_ADDRESS`, `BASE_HREF`) is identical.
+Then open `http://<server-ip>:8080`. Runtime contract: `config.js`,
+`/ws/id`, `/ws/relay`, `SITE_ADDRESS`, `BASE_HREF`. Direct IP mode (no
+hbbs/hbbr) is `web-direct/README.md`.
 
 ## Optional exclusive control room
 
