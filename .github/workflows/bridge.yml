@@ -23,7 +23,7 @@ jobs:
       matrix:
         # Flutter 3.44 bridge is only consumed by Windows arm64 (full-build).
         # Job-level `if:` cannot use `matrix`, so the list is selected here.
-        job: ${{ fromJSON(inputs.full-build && '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","extra-build-args":"","flutter-version":"3.22.3","artifact-name":"bridge-artifact"},{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","extra-build-args":"","flutter-version":"3.44.0","artifact-name":"bridge-artifact-flutter-3.44"}]' || '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","extra-build-args":"","flutter-version":"3.22.3","artifact-name":"bridge-artifact"}]') }}
+        job: ${{ fromJSON(inputs.full-build && '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","extra-build-args":"","flutter-version":"3.22.3","artifact-name":"bridge-artifact"},{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","extra-build-args":"","flutter-version":"3.44.8","artifact-name":"bridge-artifact-flutter-3.44"}]' || '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","extra-build-args":"","flutter-version":"3.22.3","artifact-name":"bridge-artifact"}]') }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4

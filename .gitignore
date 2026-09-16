@@ -75,3 +75,5 @@ flutter/web/libopus.js
 deploy/v2/web/dist/
 deploy/v2/web/.build/
 deploy/v2/web/data/
+# libdrmtap is cloned at build time by build.py (not a submodule)
+/third_party/libdrmtap/
