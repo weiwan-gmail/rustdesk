@@ -1977,8 +1977,7 @@ class ImageModel with ChangeNotifier {
       while (_webRgbaList.isNotEmpty) {
         final rgba2 = _webRgbaList.last;
         _webRgbaList.clear();
-        await decodeAndUpdate(display, rgba2,
-            width: _webRgbaWidth, height: _webRgbaHeight);
+        await _decodeWebRgba(display, rgba2, _webRgbaWidth, _webRgbaHeight);
       }
     } catch (e) {
       debugPrint('onRgba error: $e');
@@ -1995,14 +1994,30 @@ class ImageModel with ChangeNotifier {
     platformFFI.nextRgba(sessionId, display);
   }
 
-  decodeAndUpdate(int display, Uint8List rgba,
-      {int width = 0, int height = 0}) async {
+  decodeAndUpdate(int display, Uint8List rgba) async {
+    final pid = parent.target?.id;
+    final rect = parent.target?.ffiModel.pi.getDisplayRect(display);
+    final image = await img.decodeImageFromPixels(
+      rgba,
+      rect?.width.toInt() ?? 0,
+      rect?.height.toInt() ?? 0,
+      isWeb | isWindows | isLinux
+          ? ui.PixelFormat.rgba8888
+          : ui.PixelFormat.bgra8888,
+    );
+    if (parent.target?.id != pid) return;
+    await update(image);
+  }
+
+  // Web VP9/ogv paint. Prefer the decoded frame size: PeerInfo can still
+  // be the desktop default (1080x720) or 0 when the first frame arrives.
+  // Kept off decodeAndUpdate so an upstream merge can take that function.
+  Future<void> _decodeWebRgba(
+      int display, Uint8List rgba, int width, int height) async {
     final pid = parent.target?.id;
     final rect = parent.target?.ffiModel.pi.getDisplayRect(display);
     final rectW = rect?.width.toInt() ?? 0;
     final rectH = rect?.height.toInt() ?? 0;
-    // Prefer the decoded frame size. PeerInfo can still be the desktop
-    // default (1080x720) or 0 when the first VP9 frame arrives.
     var w = width;
     var h = height;
     if (w <= 0 || h <= 0 || w * h * 4 != rgba.length) {
