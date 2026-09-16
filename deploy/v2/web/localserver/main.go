@@ -3,9 +3,9 @@
 // and transparently proxies the WebSocket endpoints (/ws/id, /ws/relay) to a
 // RustDesk server (hbbs/hbbr), similar to how novnc_proxy fronts a VNC server.
 //
-// This server is version-agnostic delivery infrastructure, shared with the v1
-// server-mode localserver (deploy/v1/web/localserver); only the embedded
-// static client differs.
+// This server is version-agnostic delivery infrastructure. The retired v1
+// counterpart is archived at deploy/v1_backup/web/localserver; only the
+// embedded static client differs.
 //
 // Pure standard library, no third-party dependencies.
 //

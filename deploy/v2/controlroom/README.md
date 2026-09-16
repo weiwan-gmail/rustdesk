@@ -4,7 +4,7 @@
 
 **缺省关闭。** 没打开时连接、登录、键鼠、画面与现在完全一样：不注册 `/control`、不强制 view-only、不画条。
 
-不改 hbbs/hbbr、不改被控端 `src/server/`、不改 `deploy/v1`。原生客户端不进房间。
+不改 hbbs/hbbr、不改被控端 `src/server/`。v1 已退役（`deploy/v1_backup`，只作归档）。原生客户端不进房间。
 
 详细开关与协议在本目录；`deploy/v2/README.md` 和 `deploy/v2/web-direct/README.md` 只保留入口说明。
 

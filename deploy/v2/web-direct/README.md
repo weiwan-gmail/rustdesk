@@ -9,7 +9,9 @@
 
 与 `deploy/v2/web`（服务器模式）完全独立：不同 exe、不同目录，可同机不同端口并存。两者共用仓库根的 `flutter/` 树，直连由本目录 `config.js` 的 `direct: true` 打开。
 
-本目录的 Go 服务器（`server/`）是与客户端版本无关的交付基础设施，与 v1 直连版（`deploy/v1/web-direct/server`）同源；只有内嵌的静态客户端不同（这里是当前 `flutter/` 树的构建）。
+**当前支持的直连 Web 客户端就是本目录。** 不要在 `deploy/v1_backup` 上继续开发（那是已退役的 v1 归档）。未来开发只用 `deploy/v2` / `deploy/v2/web-direct`。
+
+本目录的 Go 服务器（`server/`）是与客户端版本无关的交付基础设施；内嵌的静态客户端来自当前 `flutter/` 树。归档里的 v1 直连版在 `deploy/v1_backup/web-direct/server`。
 
 ## 与服务器模式的区别
 

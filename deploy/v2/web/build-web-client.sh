@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build the RustDesk v2 web client (current Flutter UI + JS protocol stack)
-# from the repository's own flutter/ tree. Unlike v1 (deploy/v1, frozen
-# v1.2.4-era source), v2 builds the code that ships as the desktop client.
+# from the repository's own flutter/ tree. v1 is retired
+# (deploy/v1_backup); v2 builds the code that ships as the desktop client.
 #
 # Usage:
 #   ./build-web-client.sh                 # full build into ./dist

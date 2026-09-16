@@ -13,6 +13,8 @@
 * `libs/enigo/` input control
 * `libs/clipboard/` clipboard
 * `libs/hbb_common/src/config.rs` all options
+* `deploy/v2/` current web client (server + web-direct). Future web work starts at `deploy/README.md`.
+* `deploy/v1_backup/` retired v1 archive only — do not develop against it.
 * `deploy/v2/controlroom/` optional exclusive control among v2 web viewers (default off). Ports, overlay vs `--demo` page, per-client auto-approve: `deploy/v2/controlroom/README.md`
 
 ### Key Components
