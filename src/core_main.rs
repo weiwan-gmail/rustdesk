@@ -4,6 +4,8 @@ use crate::client::translate;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 use crate::platform::breakdown_callback;
 use base::config::keys;
+#[cfg(feature = "flutter")]
+use base::connect_rendezvous::compose_other_server;
 #[cfg(not(debug_assertions))]
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 use base::platform::register_breakdown_handler;
@@ -94,6 +96,8 @@ pub fn core_main() -> Option<Vec<String>> {
         Some("--help") | Some("-h")
     ) {
         crate::video_codec_cli::print_video_codec_help();
+        #[cfg(feature = "flutter")]
+        print_connect_rendezvous_help();
         return None;
     }
     #[cfg(any(target_os = "linux", target_os = "windows"))]
@@ -788,6 +792,8 @@ fn import_config(path: &str) {
 fn core_main_invoke_new_connection(mut args: std::env::Args) -> Option<Vec<String>> {
     let mut authority = None;
     let mut id = None;
+    let mut other_server = None;
+    let mut other_key = None;
     let mut param_array = vec![];
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -795,6 +801,12 @@ fn core_main_invoke_new_connection(mut args: std::env::Args) -> Option<Vec<Strin
             | "--terminal" | "--rdp" => {
                 authority = Some((&arg.to_string()[2..]).to_owned());
                 id = args.next();
+            }
+            "--rendezvous-server" => {
+                other_server = args.next();
+            }
+            "--key" => {
+                other_key = args.next();
             }
             "--password" => {
                 if let Some(password) = args.next() {
@@ -820,6 +832,10 @@ fn core_main_invoke_new_connection(mut args: std::env::Args) -> Option<Vec<Strin
             let ext = format!(".{}", app_name.to_lowercase());
             if id.ends_with(&ext) {
                 id = id.replace(&ext, "");
+            }
+            let (id, key_param) = compose_other_server(id, other_server, other_key);
+            if let Some(key_param) = key_param {
+                param_array.push(key_param);
             }
             let params = param_array.join("&");
             let params_flag = if params.is_empty() { "" } else { "?" };
@@ -860,6 +876,20 @@ fn core_main_invoke_new_connection(mut args: std::env::Args) -> Option<Vec<Strin
             None
         };
     }
+}
+
+#[cfg(feature = "flutter")]
+fn print_connect_rendezvous_help() {
+    println!("  --rendezvous-server <host[:port]>");
+    println!("      Session-only hbbs for --connect (and --play, --file-transfer, ...).");
+    println!("      Composes <id>@<host>. Does not change saved custom-rendezvous-server.");
+    println!("      This is not the process --server flag.");
+    println!("  --key <key>");
+    println!("      Session-only hbbs key for that connection. Requires a host");
+    println!("      (--rendezvous-server or id@host). Does not change saved key.");
+    println!();
+    println!("  rustdesk --connect <id> --rendezvous-server hbbs.example.com --key '<key>'");
+    println!("  rustdesk --connect <id>@hbbs.example.com --key '<key>'");
 }
 
 #[cfg(all(target_os = "linux", feature = "flutter"))]
