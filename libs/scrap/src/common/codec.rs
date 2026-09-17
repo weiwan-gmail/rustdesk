@@ -45,6 +45,10 @@ lazy_static::lazy_static! {
     static ref USABLE_ENCODING: Arc<Mutex<Option<SupportedEncoding>>> = Arc::new(Mutex::new(None));
 }
 
+pub use base::video_codec::{
+    cli_video_codec, effective_cli_encode_preference, parse_video_codec_name, set_cli_video_codec,
+};
+
 pub const ENCODE_NEED_SWITCH: &'static str = "ENCODE_NEED_SWITCH";
 
 #[derive(Debug, Clone)]
@@ -267,6 +271,13 @@ impl Encoder {
             .find(|(_, count)| *count == max_count)
             .unwrap_or((PreferCodec::Auto.into(), 0));
         let preference = most_frequent.enum_value_or(PreferCodec::Auto);
+        let preference = effective_cli_encode_preference(
+            preference,
+            vp8_useable,
+            av1_useable,
+            h264_useable,
+            h265_useable,
+        );
 
         // auto: h265 > h264 > av1/vp9/vp8
         let av1_test = Config::get_option(base::config::keys::OPTION_AV1_TEST) != "N";
@@ -818,32 +829,37 @@ impl Decoder {
 
     fn preference(id: Option<&str>) -> (PreferCodec, Chroma) {
         let id = id.unwrap_or_default();
-        if id.is_empty() {
-            return (PreferCodec::Auto, Chroma::I420);
+        let (peer_codec, chroma) = if id.is_empty() {
+            (PreferCodec::Auto, Chroma::I420)
+        } else {
+            let options = PeerConfig::load(id).options;
+            let codec = options
+                .get("codec-preference")
+                .map_or("".to_owned(), |c| c.to_owned());
+            let codec = if codec == "vp8" {
+                PreferCodec::VP8
+            } else if codec == "vp9" {
+                PreferCodec::VP9
+            } else if codec == "av1" {
+                PreferCodec::AV1
+            } else if codec == "h264" {
+                PreferCodec::H264
+            } else if codec == "h265" {
+                PreferCodec::H265
+            } else {
+                PreferCodec::Auto
+            };
+            let chroma = if options.get("i444") == Some(&"Y".to_string()) {
+                Chroma::I444
+            } else {
+                Chroma::I420
+            };
+            (codec, chroma)
+        };
+        match cli_video_codec() {
+            Some(cli) if cli != PreferCodec::Auto => (cli, chroma),
+            _ => (peer_codec, chroma),
         }
-        let options = PeerConfig::load(id).options;
-        let codec = options
-            .get("codec-preference")
-            .map_or("".to_owned(), |c| c.to_owned());
-        let codec = if codec == "vp8" {
-            PreferCodec::VP8
-        } else if codec == "vp9" {
-            PreferCodec::VP9
-        } else if codec == "av1" {
-            PreferCodec::AV1
-        } else if codec == "h264" {
-            PreferCodec::H264
-        } else if codec == "h265" {
-            PreferCodec::H265
-        } else {
-            PreferCodec::Auto
-        };
-        let chroma = if options.get("i444") == Some(&"Y".to_string()) {
-            Chroma::I444
-        } else {
-            Chroma::I420
-        };
-        (codec, chroma)
     }
 }
 
@@ -1154,4 +1170,62 @@ pub fn test_av1() {
             );
         });
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    lazy_static::lazy_static! {
+        static ref TEST_LOCK: Mutex<()> = Mutex::new(());
+    }
+
+    fn reset() -> std::sync::MutexGuard<'static, ()> {
+        let guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        PEER_DECODINGS.lock().unwrap().clear();
+        *ENCODE_CODEC_FORMAT.lock().unwrap() = CodecFormat::VP9;
+        *USABLE_ENCODING.lock().unwrap() = None;
+        set_cli_video_codec(None);
+        guard
+    }
+
+    fn vp8_vp9_peer(prefer: PreferCodec) -> SupportedDecoding {
+        SupportedDecoding {
+            ability_vp8: 1,
+            ability_vp9: 1,
+            prefer: prefer.into(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn cli_encode_mode_overrides_peer_prefer_on_negotiate() {
+        let _guard = reset();
+        Encoder::update(EncodingUpdate::Update(1, vp8_vp9_peer(PreferCodec::VP8)));
+        assert_eq!(Encoder::negotiated_codec(), CodecFormat::VP8);
+
+        set_cli_video_codec(Some(PreferCodec::VP9));
+        Encoder::update(EncodingUpdate::Check);
+        assert_eq!(Encoder::negotiated_codec(), CodecFormat::VP9);
+
+        set_cli_video_codec(None);
+        Encoder::update(EncodingUpdate::Check);
+        assert_eq!(Encoder::negotiated_codec(), CodecFormat::VP8);
+    }
+
+    #[test]
+    fn cli_decode_preference_reaches_supported_decoding() {
+        let _guard = reset();
+        let auto = Decoder::supported_decodings(None, false, None, &vec![]);
+        assert_eq!(
+            auto.prefer.enum_value_or(PreferCodec::Auto),
+            PreferCodec::Auto
+        );
+
+        set_cli_video_codec(Some(PreferCodec::VP8));
+        let d = Decoder::supported_decodings(None, false, None, &vec![]);
+        assert_eq!(d.prefer.enum_value_or(PreferCodec::Auto), PreferCodec::VP8);
+        assert_eq!(d.ability_vp8, 1);
+        assert_eq!(d.ability_vp9, 1);
+    }
 }

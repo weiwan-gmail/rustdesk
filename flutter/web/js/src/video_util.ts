@@ -21,13 +21,31 @@ export type VideoFrameAction =
   | { type: "ignore" };
 
 // Matches native LoginRequest.option.supported_decoding for a peer that can
-// only paint ogv.js VP8/VP9. Prefer stays Auto (0): with H264/AV1/H265
-// abilities left unset the host auto-codec is VP9 (or VP8 on low-memory).
-export function webSupportedDecodingPartial(): {
+// only paint ogv.js VP8/VP9. Prefer stays Auto (0) unless `prefer` is vp8/vp9:
+// with H264/AV1/H265 abilities left unset the host auto-codec is VP9
+// (or VP8 on low-memory). Proto PreferCodec: Auto=0, VP9=1, VP8=4.
+export function webVideoCodecPreference(
+  raw?: string | null
+): "auto" | "vp8" | "vp9" {
+  const v = (raw || "auto").trim().toLowerCase();
+  if (v === "vp8" || v === "vp9") return v;
+  return "auto";
+}
+
+export function webSupportedDecodingPartial(prefer?: string | null): {
   ability_vp9: number;
   ability_vp8: number;
+  prefer?: number;
 } {
-  return { ability_vp9: 1, ability_vp8: 1 };
+  const decoding: {
+    ability_vp9: number;
+    ability_vp8: number;
+    prefer?: number;
+  } = { ability_vp9: 1, ability_vp8: 1 };
+  const p = webVideoCodecPreference(prefer);
+  if (p === "vp9") decoding.prefer = 1;
+  if (p === "vp8") decoding.prefer = 4;
+  return decoding;
 }
 
 export function videoFrameKind(vf: VideoFrameFields): VideoFrameKind | undefined {

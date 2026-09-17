@@ -19,6 +19,13 @@ describe("webSupportedDecodingPartial", () => {
     assert.equal("ability_h264" in d, false);
     assert.equal("ability_h265" in d, false);
     assert.equal("ability_av1" in d, false);
+    assert.equal("prefer" in d, false);
+  });
+  it("sets SupportedDecoding.prefer for vp8/vp9 CLI (proto VP9=1, VP8=4)", () => {
+    assert.equal(webSupportedDecodingPartial("vp9").prefer, 1);
+    assert.equal(webSupportedDecodingPartial("vp8").prefer, 4);
+    assert.equal("prefer" in webSupportedDecodingPartial("auto"), false);
+    assert.equal("prefer" in webSupportedDecodingPartial("h264"), false);
   });
 });
 

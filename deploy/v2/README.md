@@ -77,6 +77,11 @@ to keep the room without drawing the bar.
 8099. Port 8099 is only the Docker sidecar (loopback) and
 `go run ./cmd/controlroom --demo`.
 
+`--video-codec auto|vp8|vp9` on `rustdesk-web-v2-direct` sets the web viewer's
+decode preference (`SupportedDecoding.prefer`). Omitted keeps `auto`. The page
+still only paints VP8/VP9. Host-side encode for any codec is
+`rustdesk --server --video-codec vp8|vp9|av1|h264|h265` (see `--help`).
+
 The remote-session UI is a ~32px bottom capsule, not the full-page A/B/C
 debug HTML. Auto-approve on the bar is per browser/member (while that client
 is controller); `--control-auto-approve` is process-wide.
