@@ -46,6 +46,7 @@ var (
 	open               = flag.Bool("open", false, "open the page in the system browser after start")
 	control            = flag.Bool("control", false, "enable exclusive control room at /control (off by default)")
 	controlAutoApprove = flag.Bool("control-auto-approve", false, "approve every control request immediately (implies --control)")
+	videoCodec         = flag.String("video-codec", "", "web decode preference: auto, vp8, or vp9 (ogv.js). Empty keeps the page default (auto).")
 )
 
 var allowedNets []*net.IPNet
@@ -56,7 +57,11 @@ var bridgeSem = make(chan struct{}, 32)
 
 func main() {
 	flag.Parse()
-	var err error
+	codec, err := normalizeVideoCodec(*videoCodec)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	*videoCodec = codec
 	allowedNets, err = buildAllowedNets(*allowCIDR, *allowAny)
 	if err != nil {
 		log.Fatalf("invalid --allow-cidr: %v", err)
@@ -64,10 +69,15 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/direct", handleDirect)
-	if controlOn() {
-		attachControlRoom(mux, *controlAutoApprove)
+	if controlOn() || videoCodecSet() {
+		if controlOn() {
+			attachControlRoom(mux, *controlAutoApprove)
+			log.Printf("control room: /control (auto-approve=%v)", *controlAutoApprove)
+		}
 		mux.HandleFunc("/config.js", serveRuntimeConfig)
-		log.Printf("control room: /control (auto-approve=%v)", *controlAutoApprove)
+		if videoCodecSet() {
+			log.Printf("video codec preference: %s", *videoCodec)
+		}
 	}
 
 	static, err := fs.Sub(staticFS, "static")
@@ -107,6 +117,33 @@ func controlOn() bool {
 	return *control || *controlAutoApprove
 }
 
+func videoCodecSet() bool {
+	return *videoCodec != ""
+}
+
+func normalizeVideoCodec(s string) (string, error) {
+	v := strings.ToLower(strings.TrimSpace(s))
+	switch v {
+	case "", "auto", "vp8", "vp9":
+		return v, nil
+	default:
+		return "", fmt.Errorf("invalid --video-codec %q (want auto, vp8, or vp9; web-direct paints VP8/VP9 only)", s)
+	}
+}
+
+func runtimeConfigJS(control bool, videoCodec string) string {
+	var b strings.Builder
+	b.WriteString(`window.RUSTDESK_CONFIG = {server: "", wsIdPath: "/ws/id", wsRelayPath: "/ws/relay", direct: true`)
+	if control {
+		b.WriteString(`, control: true, controlPath: "/control", controlBar: true`)
+	}
+	if videoCodec != "" {
+		fmt.Fprintf(&b, `, videoCodec: %q`, videoCodec)
+	}
+	b.WriteString("};\n")
+	return b.String()
+}
+
 func attachControlRoom(mux *http.ServeMux, autoApprove bool) {
 	h := controlroom.NewHub(autoApprove)
 	mux.Handle("/control", h)
@@ -114,7 +151,7 @@ func attachControlRoom(mux *http.ServeMux, autoApprove bool) {
 
 func serveRuntimeConfig(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/javascript")
-	fmt.Fprint(w, "window.RUSTDESK_CONFIG = {server: \"\", wsIdPath: \"/ws/id\", wsRelayPath: \"/ws/relay\", direct: true, control: true, controlPath: \"/control\", controlBar: true};\n")
+	fmt.Fprint(w, runtimeConfigJS(controlOn(), *videoCodec))
 }
 
 // handleDirect bridges /direct?target=IP:PORT to the controlled client's

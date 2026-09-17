@@ -80,6 +80,22 @@ pub fn core_main() -> Option<Vec<String>> {
         }
         i += 1;
     }
+    match crate::video_codec_cli::take_video_codec_arg(&mut args) {
+        Ok(Some(codec)) => crate::video_codec_cli::apply_cli_video_codec(codec),
+        Ok(None) => {}
+        Err(err) => {
+            eprintln!("{err}");
+            crate::video_codec_cli::print_video_codec_help();
+            return None;
+        }
+    }
+    if matches!(
+        args.first().map(String::as_str),
+        Some("--help") | Some("-h")
+    ) {
+        crate::video_codec_cli::print_video_codec_help();
+        return None;
+    }
     #[cfg(any(target_os = "linux", target_os = "windows"))]
     if args.is_empty() {
         #[cfg(target_os = "linux")]

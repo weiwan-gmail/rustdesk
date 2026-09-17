@@ -32,6 +32,7 @@ cd deploy/v2/web-direct
 
 ./rustdesk-web-v2-direct                          # http://localhost:8081
 ./rustdesk-web-v2-direct --listen :9000 --open    # 指定端口并自动开浏览器
+./rustdesk-web-v2-direct --video-codec vp8        # ask the host to encode VP8
 ```
 
 打开页面后，在「Remote ID」输入框里**直接填被控端的 IP**（如 `192.168.1.50` 或 `192.168.1.50:21118`），输入被控端密码即可连接。客户端识别到输入是 IP 就自动走直连（对齐原生客户端 `is_ip_str` 的行为），填 ID 则仍尝试走服务器。
@@ -52,6 +53,7 @@ cd deploy/v2/web-direct
 - `--allow-any`：关闭目标 IP 限制（**危险**：代理会变成开放 TCP 中继/SSRF，勿对公网开放）。
 - `--tls-cert/--tls-key`：可选 TLS；不提供即纯 HTTP（内网/本机免证书）。
 - `--base-path`、`--open`。
+- `--video-codec auto|vp8|vp9`：web 端发给被控端的 decode preference（`SupportedDecoding.prefer`）。省略则保持页面默认 `auto`。web-direct 只能绘制 VP8/VP9（ogv.js）；H264/AV1/H265 请在被控端用 `rustdesk --video-codec …`，或使用原生客户端。
 - `--control`：打开页面侧独占控制权（`/control` 挂在本进程 `--listen` 上，默认与页面同为 `:8081`，**不开 8099**）。默认关闭，行为与现在一致。
 - `--control-auto-approve`：所有申请立刻批准（隐含 `--control`）。
 

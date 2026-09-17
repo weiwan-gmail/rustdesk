@@ -99,11 +99,15 @@ lazy_static::lazy_static! {
 
 lazy_static::lazy_static! {
     // Is server process, with "--server" args
-    static ref IS_SERVER: bool = std::env::args().nth(1) == Some("--server".to_owned());
+    static ref IS_SERVER: bool =
+        crate::video_codec_cli::next_command_arg(std::env::args().skip(1))
+            == Some("--server".to_owned());
     // Is server logic running. The server code can invoked to run by the main process if --server is not running.
     static ref SERVER_RUNNING: Arc<RwLock<bool>> = Default::default();
-    static ref IS_MAIN: bool = std::env::args().nth(1).map_or(true, |arg| !arg.starts_with("--"));
-    static ref IS_CM: bool = std::env::args().nth(1) == Some("--cm".to_owned());
+    static ref IS_MAIN: bool = crate::video_codec_cli::next_command_arg(std::env::args().skip(1))
+        .map_or(true, |arg| !arg.starts_with("--"));
+    static ref IS_CM: bool =
+        crate::video_codec_cli::next_command_arg(std::env::args().skip(1)) == Some("--cm".to_owned());
 }
 
 pub struct SimpleCallOnReturn {

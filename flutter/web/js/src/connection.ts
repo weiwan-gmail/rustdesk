@@ -31,7 +31,7 @@ export const PORT = 21116;
 // Default direct-access port of the controlled client (RENDEZVOUS_PORT + 2).
 export const DIRECT_PORT = 21118;
 // Deployment-time configuration, served as config.js next to index.html.
-// window.RUSTDESK_CONFIG = { server, wsIdPath, wsRelayPath, direct?, directPath, control?, controlPath, controlBar? }
+// window.RUSTDESK_CONFIG = { server, wsIdPath, wsRelayPath, direct?, directPath, control?, controlPath, controlBar?, videoCodec? }
 const CONF: any = (window as any).RUSTDESK_CONFIG || {};
 
 function wsSchema(): string {
@@ -490,7 +490,10 @@ export default class Connection {
   }
 
   webSupportedDecoding(): message.SupportedDecoding {
-    return message.SupportedDecoding.fromPartial(webSupportedDecodingPartial());
+    const cfg: any = (window as any).RUSTDESK_CONFIG || CONF;
+    return message.SupportedDecoding.fromPartial(
+      webSupportedDecodingPartial(cfg.videoCodec)
+    );
   }
 
   async reconnect() {
