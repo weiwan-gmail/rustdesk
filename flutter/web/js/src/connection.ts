@@ -26,35 +26,16 @@ import {
   detachControlRoom,
   isForcedViewer,
 } from "./control_room";
+import { isIpTarget, normalizeDirectTarget } from "./direct_target";
 
 export const PORT = 21116;
-// Default direct-access port of the controlled client (RENDEZVOUS_PORT + 2).
-export const DIRECT_PORT = 21118;
+export { DIRECT_PORT } from "./direct_target";
 // Deployment-time configuration, served as config.js next to index.html.
-// window.RUSTDESK_CONFIG = { server, wsIdPath, wsRelayPath, direct?, directPath, control?, controlPath, controlBar?, videoCodec? }
+// window.RUSTDESK_CONFIG = { server, wsIdPath, wsRelayPath, direct?, directPath, defaultTarget?, control?, controlPath, controlBar?, videoCodec? }
 const CONF: any = (window as any).RUSTDESK_CONFIG || {};
 
 function wsSchema(): string {
   return location.protocol === "https:" ? "wss://" : "ws://";
-}
-
-// An IP literal (v4 or v6) with an optional port triggers direct IP access,
-// mirroring the native client's is_ip_str() branch.
-function isIpTarget(id: string): boolean {
-  const t = id.trim();
-  if (/^\d{1,3}(\.\d{1,3}){3}(:\d+)?$/.test(t)) return true;
-  if (/^\[[0-9a-fA-F:]+\](:\d+)?$/.test(t)) return true;
-  if (/^[0-9a-fA-F:]*:[0-9a-fA-F:]+$/.test(t) && (t.match(/:/g) || []).length >= 2) return true;
-  return false;
-}
-
-// Add the default direct-access port when the user gave a bare IP.
-function normalizeDirectTarget(id: string): string {
-  const t = id.trim();
-  if (t.startsWith("[")) {
-    return t.indexOf("]:") > 0 ? t : t + ":" + DIRECT_PORT;
-  }
-  return t.indexOf(":") > 0 ? t : t + ":" + DIRECT_PORT;
 }
 
 type MsgboxCallback = (type: string, title: string, text: string, link: string) => void;
@@ -90,7 +71,8 @@ export default class Connection {
   async start(id: string) {
     try {
       id = parseIdServerKey(id);
-      // IP→/direct only when the delivery opts in (web-direct sets direct: true).
+      // IP (and localhost) → /direct only when the delivery opts in
+      // (web-direct sets direct: true).
       if (CONF.direct && isIpTarget(id)) {
         await this._startDirect(id);
         return;

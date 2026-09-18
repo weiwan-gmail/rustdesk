@@ -784,6 +784,13 @@ function _getByName(name: string, arg: any): any {
       return JSON.stringify({ status_num: 0 });
     case "app-name":
       return (window.RUSTDESK_CONFIG || {}).appName || "RustDesk";
+    case "config": {
+      const cfg = window.RUSTDESK_CONFIG || {};
+      if (!arg) return cfg;
+      const v = cfg[arg];
+      if (v == null) return "";
+      return v;
+    }
     case "version":
       return version;
     case "build_date":

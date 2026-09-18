@@ -1141,7 +1141,9 @@ class RustdeskImpl {
   }
 
   Future<String> mainGetLastRemoteId({dynamic hint}) {
-    return Future(() => mainGetLocalOption(key: 'last_remote_id'));
+    // JS writes localStorage['last_remote_id'] (`option`), not `option:local`.
+    return Future(
+        () => js.context.callMethod('getByName', ['option', 'last_remote_id']));
   }
 
   Future<void> mainGetSoftwareUpdateUrl({dynamic hint}) {

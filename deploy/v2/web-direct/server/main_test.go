@@ -31,6 +31,7 @@ func TestRuntimeConfigEnablesControl(t *testing.T) {
 	t.Cleanup(func() {
 		*control = false
 		*videoCodec = ""
+		*defaultTarget = ""
 	})
 	*control = true
 	*videoCodec = ""
@@ -57,15 +58,44 @@ func TestNormalizeVideoCodec(t *testing.T) {
 }
 
 func TestRuntimeConfigVideoCodec(t *testing.T) {
-	js := runtimeConfigJS(false, "vp8")
+	js := runtimeConfigJS(false, "vp8", "")
 	if !strings.Contains(js, `videoCodec: "vp8"`) || !strings.Contains(js, "direct: true") {
 		t.Fatalf("codec config: %s", js)
 	}
 	if strings.Contains(js, "control: true") {
 		t.Fatalf("control should stay off: %s", js)
 	}
-	plain := runtimeConfigJS(true, "")
+	plain := runtimeConfigJS(true, "", "")
 	if strings.Contains(plain, "videoCodec") {
 		t.Fatalf("omitted codec should not appear: %s", plain)
+	}
+}
+
+func TestRuntimeConfigDefaultTarget(t *testing.T) {
+	js := runtimeConfigJS(false, "", "192.168.1.50")
+	if !strings.Contains(js, `defaultTarget: "192.168.1.50"`) || !strings.Contains(js, "direct: true") {
+		t.Fatalf("defaultTarget config: %s", js)
+	}
+	if strings.Contains(js, "control: true") || strings.Contains(js, "videoCodec") {
+		t.Fatalf("unrelated flags should stay off: %s", js)
+	}
+	plain := runtimeConfigJS(false, "vp8", "  ")
+	if strings.Contains(plain, "defaultTarget") {
+		t.Fatalf("blank defaultTarget should be omitted: %s", plain)
+	}
+}
+
+func TestServeRuntimeConfigDefaultTarget(t *testing.T) {
+	t.Cleanup(func() {
+		*control = false
+		*videoCodec = ""
+		*defaultTarget = ""
+	})
+	*defaultTarget = "10.0.0.8"
+	rec := httptest.NewRecorder()
+	serveRuntimeConfig(rec, httptest.NewRequest(http.MethodGet, "/config.js", nil))
+	body := rec.Body.String()
+	if !strings.Contains(body, `defaultTarget: "10.0.0.8"`) || !strings.Contains(body, "direct: true") {
+		t.Fatalf("runtime defaultTarget: %s", body)
 	}
 }
