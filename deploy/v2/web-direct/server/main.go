@@ -52,6 +52,10 @@ var (
 
 var allowedNets []*net.IPNet
 
+// lookupIP is net.LookupIP in production; tests replace it to simulate
+// split-horizon / internal DNS without touching the system resolver.
+var lookupIP = net.LookupIP
+
 // bridgeSem bounds concurrent /direct bridges so unauthenticated sessions
 // can't exhaust memory/goroutines.
 var bridgeSem = make(chan struct{}, 32)
@@ -165,8 +169,9 @@ func serveRuntimeConfig(w http.ResponseWriter, _ *http.Request) {
 	fmt.Fprint(w, runtimeConfigJS(controlOn(), *videoCodec, *defaultTarget))
 }
 
-// handleDirect bridges /direct?target=IP:PORT to the controlled client's
-// direct-access TCP port.
+// handleDirect bridges /direct?target=HOST:PORT to the controlled client's
+// direct-access TCP port. HOST may be an IP literal or a hostname that
+// resolves to an allowlisted address.
 func handleDirect(w http.ResponseWriter, r *http.Request) {
 	target := r.URL.Query().Get("target")
 	addr, err := validateTarget(target)
@@ -197,16 +202,19 @@ func handleDirect(w http.ResponseWriter, r *http.Request) {
 	bridge(ws, tcp)
 }
 
-// validateTarget enforces IP-literal host, the single allowed direct port,
-// and the IP allowlist - this is what stops the proxy from becoming an open
-// TCP relay (SSRF).
+// validateTarget enforces the single allowed direct port and the IP
+// allowlist — this is what stops the proxy from becoming an open TCP relay
+// (SSRF). Host may be an IP literal or a hostname (LAN name, .local, or a
+// public-looking FQDN). Hostnames are always DNS-resolved; the connection
+// is dialed to a chosen allowlisted address (IPv4 preferred). A name that
+// resolves only to public IPs is rejected unless --allow-any.
 func validateTarget(target string) (string, error) {
 	if target == "" {
 		return "", fmt.Errorf("missing target")
 	}
-	host, portStr, err := net.SplitHostPort(target)
+	host, portStr, err := splitTargetHostPort(target)
 	if err != nil {
-		return "", fmt.Errorf("target must be IP:port")
+		return "", err
 	}
 	port, err := strconv.Atoi(portStr)
 	if err != nil || port <= 0 || port > 65535 {
@@ -216,13 +224,127 @@ func validateTarget(target string) (string, error) {
 		return "", fmt.Errorf("only port %d is allowed", *directPort)
 	}
 	ip := net.ParseIP(strings.Trim(host, "[]"))
-	if ip == nil {
-		return "", fmt.Errorf("host must be an IP literal")
+	if ip != nil {
+		if !ipAllowed(ip) {
+			return "", fmt.Errorf("target %s not allowed", ip)
+		}
+		return net.JoinHostPort(ip.String(), portStr), nil
 	}
-	if !ipAllowed(ip) {
-		return "", fmt.Errorf("target %s not allowed", ip)
+	if !validHostname(host) {
+		return "", fmt.Errorf("host must be an IP literal or hostname")
 	}
-	return net.JoinHostPort(host, portStr), nil
+	ips, err := lookupIP(host)
+	if err != nil {
+		return "", fmt.Errorf("resolve %s: %w", host, err)
+	}
+	chosen := pickAllowedIP(ips)
+	if chosen == nil {
+		return "", fmt.Errorf("target %s not allowed", host)
+	}
+	return net.JoinHostPort(chosen.String(), portStr), nil
+}
+
+func splitTargetHostPort(target string) (string, string, error) {
+	host, portStr, err := net.SplitHostPort(target)
+	if err == nil {
+		return host, portStr, nil
+	}
+	if net.ParseIP(strings.Trim(target, "[]")) != nil || validHostname(target) {
+		return strings.Trim(target, "[]"), strconv.Itoa(*directPort), nil
+	}
+	return "", "", fmt.Errorf("target must be host:port")
+}
+
+func validHostname(host string) bool {
+	if host == "" || len(host) > 253 {
+		return false
+	}
+	if isDigitOnly(host) {
+		return false
+	}
+	host = strings.TrimSuffix(host, ".")
+	if host == "" {
+		return false
+	}
+	labels := strings.Split(host, ".")
+	lastHasLetter := false
+	for _, label := range labels {
+		if !validHostnameLabel(label) {
+			return false
+		}
+		lastHasLetter = hasASCIILetter(label)
+	}
+	return lastHasLetter
+}
+
+func validHostnameLabel(label string) bool {
+	n := len(label)
+	if n == 0 || n > 63 {
+		return false
+	}
+	if label[0] == '-' || label[n-1] == '-' {
+		return false
+	}
+	for i := 0; i < n; i++ {
+		c := label[i]
+		if c >= 'A' && c <= 'Z' {
+			continue
+		}
+		if c >= 'a' && c <= 'z' {
+			continue
+		}
+		if c >= '0' && c <= '9' {
+			continue
+		}
+		if c == '-' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func isDigitOnly(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func hasASCIILetter(s string) bool {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' {
+			return true
+		}
+	}
+	return false
+}
+
+// pickAllowedIP chooses a resolved address that passes ipAllowed.
+// Prefer an allowed IPv4 (typically RFC1918 / loopback / link-local).
+func pickAllowedIP(ips []net.IP) net.IP {
+	var first, firstV4 net.IP
+	for _, ip := range ips {
+		if ip == nil || !ipAllowed(ip) {
+			continue
+		}
+		if first == nil {
+			first = ip
+		}
+		if ip.To4() != nil && firstV4 == nil {
+			firstV4 = ip
+		}
+	}
+	if firstV4 != nil {
+		return firstV4
+	}
+	return first
 }
 
 func buildAllowedNets(cidrs string, any bool) ([]*net.IPNet, error) {

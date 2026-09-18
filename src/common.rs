@@ -2801,7 +2801,70 @@ pub fn get_control_permission(
 }
 
 pub fn is_direct_ip_access(peer: &str) -> bool {
-    hbb_common::is_ip_str(peer) || hbb_common::is_domain_port_str(peer)
+    hbb_common::is_ip_str(peer) || hbb_common::is_domain_port_str(peer) || is_direct_hostname(peer)
+}
+
+/// LAN name, `.local`, or FQDN (with optional `:port`) used as a direct-connect
+/// target. Digit-only strings stay RustDesk IDs and take the rendezvous path.
+pub fn is_direct_hostname(peer: &str) -> bool {
+    if peer.is_empty() || hbb_common::is_ip_str(peer) {
+        return false;
+    }
+    let Some((host, port)) = split_direct_host_port(peer) else {
+        return false;
+    };
+    if let Some(port) = port {
+        if !is_direct_port(port) {
+            return false;
+        }
+    }
+    is_direct_hostname_host(host)
+}
+
+fn split_direct_host_port(peer: &str) -> Option<(&str, Option<&str>)> {
+    if peer.starts_with('[') {
+        return None;
+    }
+    match peer.rfind(':') {
+        Some(i) if i > 0 && !peer.as_bytes()[..i].contains(&b':') => {
+            Some((&peer[..i], Some(&peer[i + 1..])))
+        }
+        Some(_) => None,
+        None => Some((peer, None)),
+    }
+}
+
+fn is_direct_port(port: &str) -> bool {
+    if port.is_empty() || port.len() > 5 || !port.bytes().all(|b| b.is_ascii_digit()) {
+        return false;
+    }
+    port.parse::<u16>().ok().filter(|p| *p > 0).is_some()
+}
+
+fn is_direct_hostname_host(host: &str) -> bool {
+    if host.is_empty() || host.len() > 253 || host.bytes().all(|b| b.is_ascii_digit()) {
+        return false;
+    }
+    let host = host.strip_suffix('.').unwrap_or(host);
+    if host.is_empty() {
+        return false;
+    }
+    let mut last_has_letter = false;
+    for label in host.split('.') {
+        if !is_hostname_label(label) {
+            return false;
+        }
+        last_has_letter = label.bytes().any(|b| b.is_ascii_alphabetic());
+    }
+    last_has_letter
+}
+
+fn is_hostname_label(label: &str) -> bool {
+    let b = label.as_bytes();
+    if b.is_empty() || b.len() > 63 || b[0] == b'-' || b[b.len() - 1] == b'-' {
+        return false;
+    }
+    b.iter().all(|&c| c.is_ascii_alphanumeric() || c == b'-')
 }
 
 // Align the maximum length of the peer id to the maximum length of the peer id in the server.
@@ -2901,6 +2964,41 @@ mod tests {
         for (id, expected) in cases {
             assert_eq!(is_valid_untrusted_peer_id(id), expected, "{id:?}");
         }
+    }
+
+    #[test]
+    fn direct_hostname_targets() {
+        let yes = [
+            "xxx.yy.com",
+            "xxx.yy.com:21118",
+            "pc2023",
+            "pc2023:21118",
+            "office-pc.local",
+            "localhost",
+        ];
+        let no = [
+            "123456789",
+            "123456789:21118",
+            "192.168.1.50",
+            "192.168.1.50:21118",
+            "abc@public",
+            "under_score",
+            "host:99999",
+            "",
+        ];
+        for id in yes {
+            assert!(is_direct_hostname(id), "{id} should be a hostname target");
+            assert!(is_direct_ip_access(id), "{id} should take the direct path");
+        }
+        for id in no {
+            assert!(
+                !is_direct_hostname(id),
+                "{id} should not be a hostname target"
+            );
+        }
+        assert!(is_direct_ip_access("192.168.1.50"));
+        assert!(is_direct_ip_access("192.168.1.50:21118"));
+        assert!(!is_direct_ip_access("123456789"));
     }
 
     // ThrottledInterval tick at the same time as tokio interval, if no sleeps

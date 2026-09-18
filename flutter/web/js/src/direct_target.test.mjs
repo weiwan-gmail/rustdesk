@@ -2,6 +2,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   DIRECT_PORT,
+  isDirectTarget,
+  isHostnameTarget,
   isIpTarget,
   normalizeDirectTarget,
   resolveWebDirectRemoteId,
@@ -23,15 +25,39 @@ describe("isIpTarget", () => {
     assert.equal(isIpTarget("[::1]"), true);
     assert.equal(isIpTarget("[::1]:21118"), true);
   });
-  it("rejects IDs and LAN hostnames (no DNS in this change)", () => {
+  it("rejects numeric IDs and does not treat LAN names as IP literals", () => {
     assert.equal(isIpTarget("123456789"), false);
     assert.equal(isIpTarget("my-nas.local"), false);
     assert.equal(isIpTarget("localhost.example"), false);
   });
 });
 
+describe("isDirectTarget hostnames", () => {
+  it("accepts split-horizon FQDN with and without port", () => {
+    assert.equal(isHostnameTarget("xxx.yy.com"), true);
+    assert.equal(isDirectTarget("xxx.yy.com"), true);
+    assert.equal(isDirectTarget("xxx.yy.com:21118"), true);
+  });
+  it("accepts LAN names and .local", () => {
+    assert.equal(isDirectTarget("pc2023"), true);
+    assert.equal(isDirectTarget("pc2023:21118"), true);
+    assert.equal(isDirectTarget("office-pc.local"), true);
+    assert.equal(isDirectTarget("my-nas.local"), true);
+  });
+  it("does not treat digit-only RustDesk IDs as hostnames", () => {
+    assert.equal(isHostnameTarget("123456789"), false);
+    assert.equal(isDirectTarget("123456789"), false);
+    assert.equal(isDirectTarget("123456789:21118"), false);
+  });
+  it("rejects IDs with @server and garbage", () => {
+    assert.equal(isDirectTarget("abc@public"), false);
+    assert.equal(isDirectTarget("under_score"), false);
+    assert.equal(isDirectTarget("host:99999"), false);
+  });
+});
+
 describe("normalizeDirectTarget", () => {
-  it("appends the default direct port to a bare IP", () => {
+  it("appends the default direct port to a bare IP or hostname", () => {
     assert.equal(
       normalizeDirectTarget("192.168.1.50"),
       `192.168.1.50:${DIRECT_PORT}`
@@ -40,6 +66,9 @@ describe("normalizeDirectTarget", () => {
       normalizeDirectTarget("192.168.1.50:21118"),
       "192.168.1.50:21118"
     );
+    assert.equal(normalizeDirectTarget("xxx.yy.com"), `xxx.yy.com:${DIRECT_PORT}`);
+    assert.equal(normalizeDirectTarget("pc2023"), `pc2023:${DIRECT_PORT}`);
+    assert.equal(normalizeDirectTarget("xxx.yy.com:21118"), "xxx.yy.com:21118");
   });
   it("maps loopback names to 127.0.0.1", () => {
     assert.equal(normalizeDirectTarget("localhost"), `127.0.0.1:${DIRECT_PORT}`);
