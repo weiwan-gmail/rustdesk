@@ -144,8 +144,7 @@ class InputRemoteTextFloatingPanel extends StatelessWidget {
     required bool outlined,
     IconData? icon,
   }) {
-    final Color fg =
-        outlined ? _kFloatingBorder : Colors.white;
+    final Color fg = outlined ? _kFloatingBorder : Colors.white;
     final child = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
