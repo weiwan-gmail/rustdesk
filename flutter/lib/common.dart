@@ -38,6 +38,7 @@ import 'desktop/pages/remote_page.dart' as desktop_remote;
 import 'desktop/pages/file_manager_page.dart' as desktop_file_manager;
 import 'desktop/pages/view_camera_page.dart' as desktop_view_camera;
 import 'package:flutter_hbb/desktop/widgets/remote_toolbar.dart';
+import 'common/one_shot_server_id.dart';
 import 'models/model.dart';
 import 'models/platform_model.dart';
 
@@ -2286,6 +2287,8 @@ bool handleUriLink({List<String>? cmdArgs, Uri? uri, String? uriString}) {
   String? password;
   String? switchUuid;
   bool? forceRelay;
+  String? rendezvousServer;
+  String? oneShotKey;
   for (int i = 0; i < args.length; i++) {
     switch (args[i]) {
       case '--connect':
@@ -2329,6 +2332,18 @@ bool handleUriLink({List<String>? cmdArgs, Uri? uri, String? uriString}) {
         password = args[i + 1];
         i++;
         break;
+      case '--rendezvous-server':
+        if (i + 1 < args.length) {
+          rendezvousServer = args[i + 1];
+          i++;
+        }
+        break;
+      case '--key':
+        if (i + 1 < args.length) {
+          oneShotKey = args[i + 1];
+          i++;
+        }
+        break;
       case '--switch_uuid':
         switchUuid = args[i + 1];
         i++;
@@ -2339,6 +2354,9 @@ bool handleUriLink({List<String>? cmdArgs, Uri? uri, String? uriString}) {
       default:
         break;
     }
+  }
+  if (id != null && (rendezvousServer != null || oneShotKey != null)) {
+    id = composeOneShotServerId(id, rendezvousServer, oneShotKey);
   }
   if (type != null && id != null) {
     switch (type) {
@@ -2476,6 +2494,9 @@ List<String>? urlLinkToCmdArgs(Uri uri) {
 
   var key = queryParameters["key"];
   if (id != null) {
+    // `rendezvous-server=` mirrors the desktop `--rendezvous-server` flag, so a deep
+    // link reaches the same `<id>@<server>?key=<key>` id as the command line.
+    id = composeOneShotServerId(id, queryParameters["rendezvous-server"], null);
     if (key != null) {
       id = "$id?key=$key";
     }
