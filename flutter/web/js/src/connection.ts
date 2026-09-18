@@ -26,7 +26,7 @@ import {
   detachControlRoom,
   isForcedViewer,
 } from "./control_room";
-import { isIpTarget, normalizeDirectTarget } from "./direct_target";
+import { isDirectTarget, normalizeDirectTarget } from "./direct_target";
 
 export const PORT = 21116;
 export { DIRECT_PORT } from "./direct_target";
@@ -71,9 +71,10 @@ export default class Connection {
   async start(id: string) {
     try {
       id = parseIdServerKey(id);
-      // IP (and localhost) → /direct only when the delivery opts in
-      // (web-direct sets direct: true).
-      if (CONF.direct && isIpTarget(id)) {
+      // IP, localhost, or hostname → /direct only when the delivery opts in
+      // (web-direct sets direct: true). Hostnames are sent as typed; the Go
+      // bridge resolves and allowlists.
+      if (CONF.direct && isDirectTarget(id)) {
         await this._startDirect(id);
         return;
       }
@@ -88,7 +89,7 @@ export default class Connection {
     }
   }
 
-  // Direct IP access: connect straight to the controlled client's
+  // Direct access: connect straight to the controlled client's
   // direct-access port through the WS->TCP bridge, skipping rendezvous/relay
   // and the secure handshake (direct connections are plaintext, matching the
   // native client). The controlled side sends the password Hash first, which

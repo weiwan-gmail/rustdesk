@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -97,5 +98,142 @@ func TestServeRuntimeConfigDefaultTarget(t *testing.T) {
 	body := rec.Body.String()
 	if !strings.Contains(body, `defaultTarget: "10.0.0.8"`) || !strings.Contains(body, "direct: true") {
 		t.Fatalf("runtime defaultTarget: %s", body)
+	}
+}
+
+func withDefaultAllowlist(t *testing.T) {
+	t.Helper()
+	nets, err := buildAllowedNets("", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prevNets, prevLookup := allowedNets, lookupIP
+	allowedNets = nets
+	t.Cleanup(func() {
+		allowedNets = prevNets
+		lookupIP = prevLookup
+	})
+}
+
+func TestValidateTargetIPLiteral(t *testing.T) {
+	withDefaultAllowlist(t)
+	got, err := validateTarget("192.168.1.50:21118")
+	if err != nil {
+		t.Fatalf("private IP: %v", err)
+	}
+	if got != "192.168.1.50:21118" {
+		t.Fatalf("got %q", got)
+	}
+	if _, err := validateTarget("8.8.8.8:21118"); err == nil {
+		t.Fatal("public IP should be rejected")
+	}
+	if _, err := validateTarget("192.168.1.50:22"); err == nil {
+		t.Fatal("non-direct port should be rejected")
+	}
+	got, err = validateTarget("192.168.1.50")
+	if err != nil || got != "192.168.1.50:21118" {
+		t.Fatalf("bare private IP: %q %v", got, err)
+	}
+}
+
+func TestValidateTargetHostnamePrivateResolve(t *testing.T) {
+	withDefaultAllowlist(t)
+	lookupIP = func(host string) ([]net.IP, error) {
+		if host != "xxx.yy.com" {
+			t.Fatalf("unexpected host %q", host)
+		}
+		return []net.IP{net.ParseIP("192.168.10.4")}, nil
+	}
+	got, err := validateTarget("xxx.yy.com:21118")
+	if err != nil {
+		t.Fatalf("split-horizon private: %v", err)
+	}
+	if got != "192.168.10.4:21118" {
+		t.Fatalf("got %q, want resolved private IP", got)
+	}
+	got, err = validateTarget("xxx.yy.com")
+	if err != nil || got != "192.168.10.4:21118" {
+		t.Fatalf("hostname without port: %q %v", got, err)
+	}
+}
+
+func TestValidateTargetHostnamePublicResolveDenied(t *testing.T) {
+	withDefaultAllowlist(t)
+	lookupIP = func(string) ([]net.IP, error) {
+		return []net.IP{net.ParseIP("8.8.8.8")}, nil
+	}
+	if _, err := validateTarget("xxx.yy.com:21118"); err == nil {
+		t.Fatal("public A record should be rejected without --allow-any")
+	}
+}
+
+func TestValidateTargetHostnamePrefersPrivateIPv4(t *testing.T) {
+	withDefaultAllowlist(t)
+	lookupIP = func(string) ([]net.IP, error) {
+		return []net.IP{
+			net.ParseIP("8.8.8.8"),
+			net.ParseIP("2001:db8::1"),
+			net.ParseIP("10.1.2.3"),
+			net.ParseIP("fd00::1"),
+		}, nil
+	}
+	got, err := validateTarget("pc.local:21118")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "10.1.2.3:21118" {
+		t.Fatalf("got %q, want private IPv4", got)
+	}
+}
+
+func TestValidateTargetNumericIDNotHostname(t *testing.T) {
+	withDefaultAllowlist(t)
+	lookupIP = func(string) ([]net.IP, error) {
+		t.Fatal("digit-only targets must not be resolved")
+		return nil, nil
+	}
+	for _, id := range []string{"123456789", "123456789:21118"} {
+		if _, err := validateTarget(id); err == nil {
+			t.Fatalf("%q should not be a hostname", id)
+		}
+	}
+}
+
+func TestValidateTargetAllowAnyPublicHostname(t *testing.T) {
+	prevNets, prevLookup := allowedNets, lookupIP
+	allowedNets, _ = buildAllowedNets("", true)
+	lookupIP = func(string) ([]net.IP, error) {
+		return []net.IP{net.ParseIP("8.8.8.8")}, nil
+	}
+	t.Cleanup(func() {
+		allowedNets = prevNets
+		lookupIP = prevLookup
+	})
+	got, err := validateTarget("xxx.yy.com:21118")
+	if err != nil || got != "8.8.8.8:21118" {
+		t.Fatalf("--allow-any public: %q %v", got, err)
+	}
+}
+
+func TestValidateTargetLocalhostRealDNS(t *testing.T) {
+	withDefaultAllowlist(t)
+	got, err := validateTarget("localhost:21118")
+	if err != nil {
+		t.Fatalf("localhost: %v", err)
+	}
+	host, port, err := net.SplitHostPort(got)
+	if err != nil || port != "21118" {
+		t.Fatalf("got %q %v", got, err)
+	}
+	ip := net.ParseIP(host)
+	if ip == nil || !ipAllowed(ip) {
+		t.Fatalf("localhost resolved to non-allowed %q", got)
+	}
+}
+
+func TestValidateTargetPublicNameRealDNSDenied(t *testing.T) {
+	withDefaultAllowlist(t)
+	if _, err := validateTarget("example.com:21118"); err == nil {
+		t.Fatal("example.com must be rejected without --allow-any")
 	}
 }

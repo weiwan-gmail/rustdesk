@@ -1,6 +1,6 @@
 # rustdesk-web-v2-direct（v2 直连版 Web 客户端）
 
-浏览器里**按 IP 直连**被控 RustDesk 客户端，**无需运行 hbbs/hbbr 服务器**。类似 noVNC 的 websockify 模式：一个自包含二进制，既发页面又把浏览器的 WebSocket 桥接到被控端的直连 TCP 端口。
+浏览器里**按 IP 或主机名直连**被控 RustDesk 客户端，**无需运行 hbbs/hbbr 服务器**。类似 noVNC 的 websockify 模式：一个自包含二进制，既发页面又把浏览器的 WebSocket 桥接到被控端的直连 TCP 端口。
 
 ```
 浏览器 ──ws/wss──► rustdesk-web-v2-direct ──裸 TCP──► 被控:21118(直连端口)
@@ -17,7 +17,7 @@
 
 | | rustdesk-web-v2（服务器模式） | rustdesk-web-v2-direct（直连模式） |
 |---|---|---|
-| 寻址 | 按 ID | 按 IP |
+| 寻址 | 按 ID | 按 IP 或主机名 |
 | 需要 hbbs/hbbr | 需要 | **不需要** |
 | 网络 | 可跨 NAT/公网（走中继） | 仅局域网/IP 可达 |
 | 被控端配置 | 填服务器 + Key | 开「直接 IP 访问」 |
@@ -35,9 +35,11 @@ cd deploy/v2/web-direct
 ./rustdesk-web-v2-direct --video-codec vp8        # ask the host to encode VP8
 ```
 
-打开页面后，在「Remote ID」输入框里**直接填被控端的 IP**（如 `192.168.1.50` 或 `192.168.1.50:21118`），输入被控端密码即可连接。客户端识别到输入是 IP 就自动走直连（对齐原生客户端 `is_ip_str` 的行为），填 ID 则仍尝试走服务器。`localhost` / `::1` 按 `127.0.0.1` 走 `/direct`。
+打开页面后，在「Remote ID」输入框里**直接填被控端的 IP 或主机名**（如 `192.168.1.50`、`192.168.1.50:21118`、`pc2023`、`office-pc.local`、`xxx.yy.com`），输入被控端密码即可连接。客户端识别到输入是 IP/主机名就自动走直连（对齐原生客户端 `is_direct_ip_access`），纯数字 ID 仍走服务器。缺省直连端口 **21118**。`localhost` / `::1` 按 `127.0.0.1` 走 `/direct`。
 
-首次打开且尚未保存 `last_remote_id` 时，Remote ID 预填当前页面主机：`http://192.168.1.50:8081` → `192.168.1.50`，`http://localhost:8081` → `127.0.0.1`。可用 `config.js` 的 `defaultTarget` 或 `--default-target` 覆盖。不自动点 Connect，也不解析局域网主机名。
+首次打开且尚未保存 `last_remote_id` 时，Remote ID 预填当前页面主机：`http://192.168.1.50:8081` → `192.168.1.50`，`http://localhost:8081` → `127.0.0.1`。可用 `config.js` 的 `defaultTarget` 或 `--default-target` 覆盖。不自动点 Connect；预填不使用局域网主机名（用户仍可手填主机名连接）。
+
+Split-horizon / 内网 DNS：看起来像公网的 FQDN（`xxx.yy.com`）只要解析到私网/回环/链路本地（或 `--allow-cidr`）就允许；同一名字若解析到公网 IP，桥会拒绝（除非 `--allow-any`）。浏览器通常看不到内网 DNS，所以页面把 `hostname:port` 交给 Go 再 `LookupIP`，**先解析再套用与 IP 直连相同的 allowlist**，不会在未检查解析结果的情况下拨号。
 
 ## 被控端设置
 
@@ -68,7 +70,7 @@ cd deploy/v2/web-direct
 
 ## 安全说明
 
-`/direct` 是一个 WS→TCP 桥。默认只允许**回环/私网/链路本地**目标且只允许 `21118` 端口，防止它沦为开放代理。不要用 `--allow-any` 把它暴露到不可信网络。
+`/direct` 是一个 WS→TCP 桥。默认只允许**回环/私网/链路本地**目标且只允许 `21118` 端口，防止它沦为开放代理。主机名会先 DNS 解析，再对**选中的解析地址**做同一套 allowlist；公网 A/AAAA 记录会被拒绝。不要用 `--allow-any` 把它暴露到不可信网络。
 
 ## Design notes / 以后讨论
 
