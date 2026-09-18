@@ -28,17 +28,26 @@ void showInputRemoteTextDialog({
     }
 
     if (isMobile) {
-      return InputRemoteTextFloatingPanel(
-        controller: controller,
-        title: translate('Input text'),
-        hint: translate('Input text'),
-        cancelLabel: translate('Cancel'),
-        sendLabel: translate('Send'),
-        enterLabel: translate('Enter'),
-        accentColor: MyTheme.accent,
+      return CustomAlertDialog(
+        title: null,
+        titlePadding: EdgeInsets.zero,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        shape: const RoundedRectangleBorder(),
+        contentBoxConstraints: const BoxConstraints(maxWidth: 420),
+        content: InputRemoteTextFloatingPanel(
+          controller: controller,
+          title: translate('Input text'),
+          hint: translate('Input text'),
+          cancelLabel: translate('Cancel'),
+          sendLabel: translate('Send'),
+          enterLabel: translate('Enter'),
+          accentColor: MyTheme.accent,
+          onCancel: close,
+          onSend: () => submit(sendEnter: false),
+          onEnter: () => submit(sendEnter: true),
+        ),
         onCancel: close,
-        onSend: () => submit(sendEnter: false),
-        onEnter: () => submit(sendEnter: true),
       );
     }
 
