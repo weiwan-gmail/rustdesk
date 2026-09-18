@@ -30,7 +30,7 @@ use hbb_common::{
     webrtc::WebRTCStream,
     AddrMangle, IntoTargetAddr, ResultType, Stream, TargetAddr,
 };
-use base::config::keys::*;
+use base::{config::keys::*, direct_access};
 
 use crate::{
     check_port,
@@ -1132,23 +1132,19 @@ impl RendezvousMediator {
 }
 
 fn get_direct_port() -> i32 {
-    let mut port = Config::get_option("direct-access-port")
-        .parse::<i32>()
-        .unwrap_or(0);
-    if port <= 0 {
-        port = RENDEZVOUS_PORT + 2;
-    }
-    port
+    direct_access::direct_access_port(
+        &Config::get_option("direct-access-port"),
+        RENDEZVOUS_PORT + 2,
+    )
 }
 
 async fn direct_server(server: ServerPtr) {
     let mut listener = None;
     let mut port = 0;
     loop {
-        let disabled = !option2bool(
-            OPTION_DIRECT_SERVER,
-            &Config::get_option(OPTION_DIRECT_SERVER),
-        ) || option2bool("stop-service", &Config::get_option("stop-service"));
+        let disabled =
+            !direct_access::direct_server_enabled(&Config::get_option(OPTION_DIRECT_SERVER))
+                || option2bool("stop-service", &Config::get_option("stop-service"));
         if !disabled && listener.is_none() {
             port = get_direct_port();
             match hbb_common::tcp::listen_any(port as _).await {

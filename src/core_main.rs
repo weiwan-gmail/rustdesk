@@ -91,13 +91,17 @@ pub fn core_main() -> Option<Vec<String>> {
             return None;
         }
     }
-    if matches!(
-        args.first().map(String::as_str),
-        Some("--help") | Some("-h")
-    ) {
-        crate::video_codec_cli::print_video_codec_help();
-        #[cfg(feature = "flutter")]
-        print_connect_rendezvous_help();
+    match crate::direct_access_cli::take_direct_access_args(&mut args) {
+        Ok(cli) if cli.is_set() => crate::direct_access_cli::apply_cli_direct_access(cli),
+        Ok(_) => {}
+        Err(err) => {
+            eprintln!("{err}");
+            crate::direct_access_cli::print_direct_access_help();
+            return None;
+        }
+    }
+    if args.iter().any(|arg| base::cli::is_cli_help_arg(arg)) {
+        print_main_help();
         return None;
     }
     #[cfg(any(target_os = "linux", target_os = "windows"))]
@@ -890,6 +894,12 @@ fn print_connect_rendezvous_help() {
     println!();
     println!("  rustdesk --connect <id> --rendezvous-server hbbs.example.com --key '<key>'");
     println!("  rustdesk --connect <id>@hbbs.example.com --key '<key>'");
+}
+
+fn print_main_help() {
+    println!("{}", base::cli::main_help_text(crate::VERSION));
+    #[cfg(feature = "flutter")]
+    print_connect_rendezvous_help();
 }
 
 #[cfg(all(target_os = "linux", feature = "flutter"))]

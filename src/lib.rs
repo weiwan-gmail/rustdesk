@@ -19,6 +19,8 @@ mod lan;
 mod rendezvous_mediator;
 #[cfg(not(any(target_os = "ios")))]
 pub use self::rendezvous_mediator::*;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+mod direct_access_cli;
 mod video_codec_cli;
 /// cbindgen:ignore
 pub mod common;
