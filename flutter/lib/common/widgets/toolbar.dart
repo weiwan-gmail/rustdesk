@@ -174,6 +174,7 @@ void openInputRemoteText({required String id, required FFI ffi}) {
     showInputRemoteTextDialog(
       sessionId: sessionId,
       dialogManager: ffi.dialogManager,
+      inputModel: ffi.inputModel,
     );
   }
 
