@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_hbb/models/peer_model.dart';
 
 import '../../common.dart';
+import '../../common/web_direct_default_id.dart';
 import '../../common/widgets/peer_tab_page.dart';
 import '../../common/widgets/autocomplete.dart';
 import '../../consts.dart';
@@ -67,9 +68,16 @@ class _ConnectionPageState extends State<ConnectionPage> {
     if (_idController.text.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         final lastRemoteId = await bind.mainGetLastRemoteId();
-        if (lastRemoteId != _idController.id) {
+        final id = resolveWebDirectRemoteId(
+          isWeb: isWeb,
+          direct: ffiGetByName('config', 'direct') == 'true',
+          lastRemoteId: lastRemoteId,
+          defaultTarget: ffiGetByName('config', 'defaultTarget'),
+          locationHost: Uri.base.host,
+        );
+        if (id.isNotEmpty && id != _idController.id) {
           setState(() {
-            _idController.id = lastRemoteId;
+            _idController.id = id;
           });
         }
       });
