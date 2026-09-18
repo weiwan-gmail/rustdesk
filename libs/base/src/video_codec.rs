@@ -10,23 +10,37 @@ lazy_static! {
 
 pub const VIDEO_CODEC_VALUES: &str = "auto|vp8|vp9|av1|h264|h265";
 
-/// Skip `--video-codec` / `--video-codec=` so process-mode detection
+/// Skip process-lifetime option flags so process-mode detection
 /// (`--server`, `--cm`, GUI) still sees the real command as argv[1].
 pub fn next_command_arg<I>(args: I) -> Option<String>
 where
     I: IntoIterator<Item = String>,
 {
     let mut skip_value = false;
+    let mut skip_optional_bool = false;
     for arg in args {
         if skip_value {
             skip_value = false;
             continue;
         }
-        if arg == "--video-codec" {
+        if skip_optional_bool {
+            skip_optional_bool = false;
+            if crate::direct_access::is_direct_server_value(&arg) {
+                continue;
+            }
+        }
+        if arg == "--video-codec" || arg == "--direct-access-port" {
             skip_value = true;
             continue;
         }
-        if arg.starts_with("--video-codec=") {
+        if arg.starts_with("--video-codec=")
+            || arg.starts_with("--direct-access-port=")
+            || arg.starts_with("--direct-server=")
+        {
+            continue;
+        }
+        if arg == "--direct-server" {
+            skip_optional_bool = true;
             continue;
         }
         return Some(arg);
@@ -195,6 +209,35 @@ mod tests {
         );
         assert_eq!(next_command_arg(args(&["--video-codec", "vp8"])), None);
         assert_eq!(next_command_arg(args(&["--cm"])), Some("--cm".to_string()));
+    }
+
+    #[test]
+    fn next_command_arg_skips_direct_access_flags() {
+        assert_eq!(
+            next_command_arg(args(&["--direct-access-port", "21119", "--server"])),
+            Some("--server".to_string())
+        );
+        assert_eq!(
+            next_command_arg(args(&["--direct-server", "--server"])),
+            Some("--server".to_string())
+        );
+        assert_eq!(
+            next_command_arg(args(&["--direct-server", "Y", "--server"])),
+            Some("--server".to_string())
+        );
+        assert_eq!(
+            next_command_arg(args(&[
+                "--direct-access-port=21119",
+                "--video-codec",
+                "vp8",
+                "--server"
+            ])),
+            Some("--server".to_string())
+        );
+        assert_eq!(
+            next_command_arg(args(&["--direct-server=N", "--cm"])),
+            Some("--cm".to_string())
+        );
     }
 
     #[test]
