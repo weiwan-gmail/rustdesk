@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common/shared_state.dart';
 import 'package:flutter_hbb/common/widgets/toolbar.dart';
 import 'package:flutter_hbb/consts.dart';
+import 'package:flutter_hbb/mobile/widgets/floating_control_pad.dart';
 import 'package:flutter_hbb/mobile/widgets/floating_mouse.dart';
 import 'package:flutter_hbb/mobile/widgets/floating_mouse_widgets.dart';
 import 'package:flutter_hbb/mobile/widgets/gesture_help.dart';
@@ -722,6 +723,10 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
               ffi: gFFI,
             ));
           }
+          paints.add(FloatingControlPad(
+            ffi: gFFI,
+            onOpenKeyboard: openKeyboard,
+          ));
           return paints;
         }()));
   }
@@ -901,6 +906,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
                 bind.mainSetLocalOption(key: kOptionTouchMode, value: v);
               },
               virtualMouseMode: gFFI.ffiModel.virtualMouseMode,
+              controlPadMode: gFFI.ffiModel.controlPadMode,
               inputModel: gFFI.inputModel,
             )));
   }

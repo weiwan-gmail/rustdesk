@@ -120,6 +120,7 @@ class FfiModel with ChangeNotifier {
   bool? _direct;
   bool _touchMode = false;
   late VirtualMouseMode virtualMouseMode;
+  late ControlPadMode controlPadMode;
   Timer? _timer;
   Timer? _restartReconnectDelayTimer;
   var _reconnects = 1;
@@ -179,6 +180,7 @@ class FfiModel with ChangeNotifier {
     sessionId = parent.target!.sessionId;
     cachedPeerData.permissions = _permissions;
     virtualMouseMode = VirtualMouseMode(this);
+    controlPadMode = ControlPadMode(this);
   }
 
   Rect? globalDisplaysRect() => _getDisplaysRect(_pi.displays, true);
@@ -1442,6 +1444,7 @@ class FfiModel with ChangeNotifier {
     }
     if (isMobile) {
       virtualMouseMode.loadOptions();
+      controlPadMode.loadOptions();
     }
     if (connType == ConnType.fileTransfer) {
       parent.target?.fileModel.onReady();
@@ -1947,6 +1950,37 @@ class VirtualMouseMode with ChangeNotifier {
         value: showVirtualJoystick ? 'N' : 'Y');
     setShowVirtualJoystick(
         bind.mainGetLocalOption(key: kOptionShowVirtualJoystick) == 'Y');
+  }
+}
+
+class ControlPadMode with ChangeNotifier {
+  bool _show = false;
+
+  bool get show => _show;
+
+  FfiModel ffiModel;
+
+  ControlPadMode(this.ffiModel);
+
+  bool _shouldShow() => !ffiModel.isPeerAndroid;
+
+  setShow(bool b) {
+    if (b == _show) return;
+    if (_shouldShow()) {
+      _show = b;
+      notifyListeners();
+    }
+  }
+
+  void loadOptions() {
+    _show = bind.mainGetLocalOption(key: kOptionShowControlPad) == 'Y';
+    notifyListeners();
+  }
+
+  Future<void> toggle() async {
+    await bind.mainSetLocalOption(
+        key: kOptionShowControlPad, value: show ? 'N' : 'Y');
+    setShow(bind.mainGetLocalOption(key: kOptionShowControlPad) == 'Y');
   }
 }
 

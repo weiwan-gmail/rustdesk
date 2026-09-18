@@ -42,25 +42,30 @@ class GestureHelp extends StatefulWidget {
       required this.touchMode,
       required this.onTouchModeChange,
       required this.virtualMouseMode,
+      required this.controlPadMode,
       this.inputModel})
       : super(key: key);
   final bool touchMode;
   final OnTouchModeChange onTouchModeChange;
   final VirtualMouseMode virtualMouseMode;
+  final ControlPadMode controlPadMode;
   final InputModel? inputModel;
 
   @override
   State<StatefulWidget> createState() =>
-      _GestureHelpState(touchMode, virtualMouseMode);
+      _GestureHelpState(touchMode, virtualMouseMode, controlPadMode);
 }
 
 class _GestureHelpState extends State<GestureHelp> {
   late int _selectedIndex;
   late bool _touchMode;
   final VirtualMouseMode _virtualMouseMode;
+  final ControlPadMode _controlPadMode;
 
-  _GestureHelpState(bool touchMode, VirtualMouseMode virtualMouseMode)
-      : _virtualMouseMode = virtualMouseMode {
+  _GestureHelpState(bool touchMode, VirtualMouseMode virtualMouseMode,
+      ControlPadMode controlPadMode)
+      : _virtualMouseMode = virtualMouseMode,
+        _controlPadMode = controlPadMode {
     _touchMode = touchMode;
     _selectedIndex = _touchMode ? 1 : 0;
   }
@@ -77,8 +82,7 @@ class _GestureHelpState extends State<GestureHelp> {
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final space = 12.0;
-    // Force a 3-column grid. Narrow phones previously wrapped to 2x3; the
-    // extra horizontal-wheel cell makes this a 3x3-style sheet (3+3+1).
+    // Force a 3-column grid. Narrow phones previously wrapped to 2x3.
     const columns = 3;
     final width = size.width / columns - 2 * space;
     return Center(
@@ -270,6 +274,29 @@ class _GestureHelpState extends State<GestureHelp> {
                                     ],
                                   )),
                             )),
+                      Transform.translate(
+                        offset: const Offset(-10.0, 0.0),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Checkbox(
+                              value: _controlPadMode.show,
+                              onChanged: (value) async {
+                                if (value == null) return;
+                                await _controlPadMode.toggle();
+                                setState(() {});
+                              },
+                            ),
+                            InkWell(
+                              onTap: () async {
+                                await _controlPadMode.toggle();
+                                setState(() {});
+                              },
+                              child: Text(translate('Show control pad')),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -295,9 +322,6 @@ class _GestureHelpState extends State<GestureHelp> {
           translate("Mouse Drag")),
       GestureInfo(width, GestureIcons.iconGestureFThreeFingers,
           translate("Three-Finger vertically"), translate("Mouse Wheel")),
-      GestureInfo(width, GestureIcons.iconGestureFDragUpDown_,
-          translate("Three-Finger horizontally"), translate("Mouse Wheel"),
-          quarterTurns: 1),
       GestureInfo(width, GestureIcons.iconGestureFDrag,
           translate("Two-Finger Move"), translate("Canvas Move")),
       GestureInfo(width, GestureIcons.iconGesturePinch,
