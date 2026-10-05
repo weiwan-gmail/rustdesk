@@ -518,10 +518,13 @@ class _GeneralState extends State<_General> {
             isServer: false,
           ),
         ),
-        // though this is related to GUI, but opengl problem affects all users, so put in config rather than local
-        if (isLinux)
+        // though this is related to GUI, but opengl/ANGLE problems affect all
+        // users, so put in config rather than local
+        if (isLinux || isWindows)
           Tooltip(
-            message: translate('software_render_tip'),
+            message: translate(isWindows
+                ? 'software_render_tip_windows'
+                : 'software_render_tip'),
             child: _OptionCheckBox(
               context,
               "Always use software rendering",

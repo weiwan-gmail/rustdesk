@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", ""),
         ("Canvas pan", ""),
         ("Canvas zoom", ""),
-        ("Keyboard", "")
+        ("Keyboard", ""),
+        ("software_render_tip_windows", "Ieslēdziet, ja GUI kļūst balts datorā bez monitora, ar virtuālo GPU, Microsoft Basic Display Adapter vai pēc atjaunošanas no teknes. Restartējiet GUI procesu; Windows pakalpojums var turpināt darboties."),
     ].iter().cloned().collect();
 }

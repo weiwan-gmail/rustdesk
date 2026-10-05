@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", "더블클릭"),
         ("Canvas pan", "캔버스 이동"),
         ("Canvas zoom", "캔버스 확대/축소"),
-        ("Keyboard", "키보드")
+        ("Keyboard", "키보드"),
+        ("software_render_tip_windows", "모니터가 없거나 가상 GPU, Microsoft Basic Display Adapter 환경에서, 또는 트레이에서 다시 열 때 GUI가 하얗게 되면 이 옵션을 사용하세요. GUI 프로세스를 다시 시작해야 적용됩니다. Windows 서비스는 계속 실행해도 됩니다."),
     ].iter().cloned().collect();
 }

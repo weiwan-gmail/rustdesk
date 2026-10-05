@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", ""),
         ("Canvas pan", ""),
         ("Canvas zoom", ""),
-        ("Keyboard", "")
+        ("Keyboard", ""),
+        ("software_render_tip_windows", "Omogočite, če GUI postane bel na računalniku brez zaslona, z navideznim GPU, Microsoft Basic Display Adapter ali po obnovitvi iz vrstice. Znova zaženite proces GUI; storitev Windows lahko teče naprej."),
     ].iter().cloned().collect();
 }

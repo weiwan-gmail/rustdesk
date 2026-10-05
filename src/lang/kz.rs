@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", ""),
         ("Canvas pan", ""),
         ("Canvas zoom", ""),
-        ("Keyboard", "")
+        ("Keyboard", ""),
+        ("software_render_tip_windows", "Мониторы жоқ компьютерде, виртуалды GPU, Microsoft Basic Display Adapter немесе науадан қалпына келтіргенде GUI ақ болып кетсе, қосыңыз. GUI процесін қайта іске қосыңыз; Windows қызметі жұмысын жалғастыра алады."),
     ].iter().cloned().collect();
 }

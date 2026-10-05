@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", ""),
         ("Canvas pan", ""),
         ("Canvas zoom", ""),
-        ("Keyboard", "")
+        ("Keyboard", ""),
+        ("software_render_tip_windows", "ჩართეთ, თუ GUI თეთრდება მონიტორის გარეშე PC-ზე, ვირტუალურ GPU-ზე, Microsoft Basic Display Adapter-ზე ან უჯრიდან აღდგენისას. გადატვირთეთ GUI პროცესი; Windows სერვისი შეიძლება გაგრძელდეს."),
     ].iter().cloned().collect();
 }

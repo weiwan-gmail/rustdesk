@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", ""),
         ("Canvas pan", ""),
         ("Canvas zoom", ""),
-        ("Keyboard", "")
+        ("Keyboard", ""),
+        ("software_render_tip_windows", "Ativa si s'interfache si faghet bianca in unu PC chene monitor, GPU virtuale, Microsoft Basic Display Adapter o a pustis de su ripristinu dae sa casella. Torra a aviare su protzessu GUI; su servìtziu Windows podet sighire."),
     ].iter().cloned().collect();
 }

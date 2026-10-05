@@ -8,6 +8,7 @@
 #include <iostream>
 
 #include "win32_desktop.h"
+#include "d3d_warp.h"
 #include "flutter_window.h"
 #include "utils.h"
 
@@ -141,6 +142,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   command_line_arguments.insert(command_line_arguments.end(), rust_args.begin(), rust_args.end());
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
+
+  // After rustdesk_core_main_args(), which may set RUSTDESK_FLUTTER_D3D_WARP.
+  MaybeForceFlutterAngleWarp();
 
   FlutterWindow window(project);
 

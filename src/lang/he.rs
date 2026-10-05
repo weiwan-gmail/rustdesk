@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", "לחיצה כפולה"),
         ("Canvas pan", "הזזת בד"),
         ("Canvas zoom", "זום בד"),
-        ("Keyboard", "מקלדת")
+        ("Keyboard", "מקלדת"),
+        ("software_render_tip_windows", "הפעילו אם הממשק הופך ללבן במחשב ללא צג, GPU וירטואלי, Microsoft Basic Display Adapter או אחרי שחזור ממגש המערכת. יש להפעיל מחדש את תהליך ה-GUI; שירות Windows יכול להמשיך לרוץ."),
     ].iter().cloned().collect();
 }

@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", "Podwójne kliknięcie"),
         ("Canvas pan", "Przesuń obszar"),
         ("Canvas zoom", "Powiększ obszar"),
-        ("Keyboard", "Klawiatura")
+        ("Keyboard", "Klawiatura"),
+        ("software_render_tip_windows", "Włącz, jeśli interfejs staje się biały na PC bez monitora, z wirtualnym GPU, Microsoft Basic Display Adapter lub po przywróceniu z zasobnika. Wymagane jest ponowne uruchomienie procesu GUI; usługa Windows może dalej działać."),
     ].iter().cloned().collect();
 }

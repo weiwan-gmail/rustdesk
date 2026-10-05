@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", "Double-clic"),
         ("Canvas pan", "Déplacer la vue"),
         ("Canvas zoom", "Zoomer la vue"),
-        ("Keyboard", "Clavier")
+        ("Keyboard", "Clavier"),
+        ("software_render_tip_windows", "Activez cette option si l'interface devient blanche sur un PC sans écran, GPU virtuel, Microsoft Basic Display Adapter, ou après restauration depuis la zone de notification. Redémarrez le processus GUI ; le service Windows peut continuer."),
     ].iter().cloned().collect();
 }

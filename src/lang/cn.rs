@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", "双击"),
         ("Canvas pan", "画布平移"),
         ("Canvas zoom", "画布缩放"),
-        ("Keyboard", "键盘")
+        ("Keyboard", "键盘"),
+        ("software_render_tip_windows", "无显示器、虚拟 GPU、Microsoft Basic Display Adapter，或从托盘恢复后界面全白时，请启用此项。需重启 GUI 进程后生效，Windows 服务可继续运行。"),
     ].iter().cloned().collect();
 }

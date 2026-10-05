@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", ""),
         ("Canvas pan", ""),
         ("Canvas zoom", ""),
-        ("Keyboard", "")
+        ("Keyboard", ""),
+        ("software_render_tip_windows", "اگر رابط در رایانه بدون نمایشگر، GPU مجازی، Microsoft Basic Display Adapter یا پس از بازگردانی از سینی سفید شد این گزینه را روشن کنید. فرایند GUI باید از نو اجرا شود؛ سرویس ویندوز می‌تواند ادامه دهد."),
     ].iter().cloned().collect();
 }

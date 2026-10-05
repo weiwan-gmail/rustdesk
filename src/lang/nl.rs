@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", "Dubbelklik"),
         ("Canvas pan", "Canvas verschuiven"),
         ("Canvas zoom", "Canvas zoomen"),
-        ("Keyboard", "Toetsenbord")
+        ("Keyboard", "Toetsenbord"),
+        ("software_render_tip_windows", "Schakel dit in als de GUI wit wordt op een pc zonder monitor, virtuele GPU, Microsoft Basic Display Adapter of na herstel vanuit het systeemvak. Start het GUI-proces opnieuw; de Windows-service kan blijven draaien."),
     ].iter().cloned().collect();
 }

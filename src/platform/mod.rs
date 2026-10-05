@@ -1,3 +1,5 @@
+pub mod virtual_gpu;
+
 #[cfg(target_os = "linux")]
 pub use linux::*;
 #[cfg(target_os = "macos")]

@@ -136,6 +136,9 @@ pub fn core_main() -> Option<Vec<String>> {
             std::env::remove_var(k);
         }
     }
+    #[cfg(target_os = "windows")]
+    #[cfg(feature = "flutter")]
+    crate::platform::windows::apply_flutter_software_render_env();
     #[cfg(windows)]
     if args.contains(&"--connect".to_string()) || args.contains(&"--view-camera".to_string()) {
         base::platform::windows::start_cpu_performance_monitor();

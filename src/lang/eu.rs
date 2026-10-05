@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", ""),
         ("Canvas pan", ""),
         ("Canvas zoom", ""),
-        ("Keyboard", "")
+        ("Keyboard", ""),
+        ("software_render_tip_windows", "Aktibatu GUI-a zuri bihurtzen bada monitorerik gabeko PCan, GPU birtualean, Microsoft Basic Display Adapter-en edo erretilutik leheneratzean. Berrabiarazi GUI prozesua; Windows zerbitzuak jarraitu dezake."),
     ].iter().cloned().collect();
 }

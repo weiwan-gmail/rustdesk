@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", "Dubbelklick"),
         ("Canvas pan", "Flytta duk"),
         ("Canvas zoom", "Zooma duk"),
-        ("Keyboard", "Tangentbord")
+        ("Keyboard", "Tangentbord"),
+        ("software_render_tip_windows", "Aktivera om GUI blir vit på en PC utan skärm, virtuell GPU, Microsoft Basic Display Adapter eller efter återställning från systemfältet. Starta om GUI-processen; Windows-tjänsten kan fortsätta."),
     ].iter().cloned().collect();
 }

@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", "Çift tık"),
         ("Canvas pan", "Tuvali kaydır"),
         ("Canvas zoom", "Tuvali yakınlaştır"),
-        ("Keyboard", "Klavye")
+        ("Keyboard", "Klavye"),
+        ("software_render_tip_windows", "Monitörü olmayan PC, sanal GPU, Microsoft Basic Display Adapter veya tepsiyen geri yüklerken GUI beyazlaşırsa bunu açın. GUI sürecini yeniden başlatın; Windows hizmeti çalışmaya devam edebilir."),
     ].iter().cloned().collect();
 }

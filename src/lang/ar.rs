@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", "نقرة مزدوجة"),
         ("Canvas pan", "تحريك اللوحة"),
         ("Canvas zoom", "تكبير اللوحة"),
-        ("Keyboard", "لوحة المفاتيح")
+        ("Keyboard", "لوحة المفاتيح"),
+        ("software_render_tip_windows", "فعّل هذا الخيار إذا أصبحت الواجهة بيضاء على جهاز بلا شاشة أو بوحدة GPU افتراضية أو Microsoft Basic Display Adapter أو بعد الاستعادة من صينية النظام. أعد تشغيل عملية الواجهة؛ يمكن أن تبقى خدمة Windows قيد التشغيل."),
     ].iter().cloned().collect();
 }

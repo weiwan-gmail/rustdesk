@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", ""),
         ("Canvas pan", ""),
         ("Canvas zoom", ""),
-        ("Keyboard", "")
+        ("Keyboard", ""),
+        ("software_render_tip_windows", "હેડલેસ PC, વર્ચ્યુઅલ GPU, Microsoft Basic Display Adapter અથવા ટ્રેમાંથી પાછા લાવ્યા પછી GUI સફેદ થાય તો આ ચાલુ કરો. GUI પ્રક્રિયા ફરી શરૂ કરો; Windows સેવા ચાલુ રહી શકે છે."),
     ].iter().cloned().collect();
 }

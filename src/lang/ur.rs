@@ -790,7 +790,8 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", ""),
         ("Canvas pan", ""),
         ("Canvas zoom", ""),
-        ("Keyboard", "")
+        ("Keyboard", ""),
+        ("software_render_tip_windows", "اگر ہیڈ لیس PC، ورچوئل GPU، Microsoft Basic Display Adapter، یا ٹرے سے واپس لانے پر GUI سفید ہو جائے تو اسے آن کریں۔ GUI عمل دوبارہ شروع کریں؛ Windows سروس چلتی رہ سکتی ہے۔"),
     ].iter().cloned().collect();
 }
 

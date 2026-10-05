@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", "Klik ganda"),
         ("Canvas pan", "Geser kanvas"),
         ("Canvas zoom", "Zoom kanvas"),
-        ("Keyboard", "Papan ketik")
+        ("Keyboard", "Papan ketik"),
+        ("software_render_tip_windows", "Aktifkan jika GUI menjadi putih pada PC tanpa monitor, GPU virtual, Microsoft Basic Display Adapter, atau setelah dipulihkan dari baki. Mulai ulang proses GUI; layanan Windows dapat tetap berjalan."),
     ].iter().cloned().collect();
 }

@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", "ดับเบิลคลิก"),
         ("Canvas pan", "เลื่อนแคนวาส"),
         ("Canvas zoom", "ซูมแคนวาส"),
-        ("Keyboard", "แป้นพิมพ์")
+        ("Keyboard", "แป้นพิมพ์"),
+        ("software_render_tip_windows", "เปิดตัวเลือกนี้หาก GUI เป็นสีขาวทั้งหน้าบนเครื่องที่ไม่มีจอ ใช้ GPU เสมือน Microsoft Basic Display Adapter หรือเมื่อเปิดจากถาดระบบ ต้องรีสตาร์ทโพรเซส GUI; บริการ Windows ทำงานต่อไปได้"),
     ].iter().cloned().collect();
 }

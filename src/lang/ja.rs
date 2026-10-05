@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", "ダブルクリック"),
         ("Canvas pan", "キャンバス移動"),
         ("Canvas zoom", "キャンバス拡大"),
-        ("Keyboard", "キーボード")
+        ("Keyboard", "キーボード"),
+        ("software_render_tip_windows", "モニターなし・仮想 GPU・Microsoft Basic Display Adapter、またはトレイから再表示したときに GUI が真っ白になる場合に有効にしてください。GUI プロセスの再起動が必要です。Windows サービスはそのままで構いません。"),
     ].iter().cloned().collect();
 }
