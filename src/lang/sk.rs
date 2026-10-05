@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", ""),
         ("Canvas pan", ""),
         ("Canvas zoom", ""),
-        ("Keyboard", "")
+        ("Keyboard", ""),
+        ("software_render_tip_windows", "Zapnite, ak je GUI biele na PC bez monitora, s virtuálnou GPU, Microsoft Basic Display Adapter alebo po obnovení z oznamovacej oblasti. Je potrebný reštart procesu GUI; služba Windows môže bežať ďalej."),
     ].iter().cloned().collect();
 }

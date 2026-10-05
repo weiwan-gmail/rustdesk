@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", ""),
         ("Canvas pan", ""),
         ("Canvas zoom", ""),
-        ("Keyboard", "")
+        ("Keyboard", ""),
+        ("software_render_tip_windows", "மானிட்டர் இல்லாத PC, மெய்நிகர் GPU, Microsoft Basic Display Adapter அல்லது தட்டில் இருந்து மீட்ட பின் GUI வெள்ளையாக இருந்தால் இதை இயக்கவும். GUI செயல்முறையை மீண்டும் தொடங்கவும்; Windows சேவை தொடரலாம்."),
     ].iter().cloned().collect();
 }

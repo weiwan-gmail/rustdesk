@@ -100,6 +100,10 @@ mod acl;
 mod installer_handoff;
 mod installer_shell;
 mod msi_registry;
+#[cfg(feature = "flutter")]
+mod software_render;
+#[cfg(feature = "flutter")]
+pub use software_render::apply_flutter_software_render_env;
 pub(crate) use acl::current_process_user_sid_string;
 pub use acl::{
     set_path_permission, set_path_permission_for_portable_service_shmem_dir,

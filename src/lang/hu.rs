@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", "Dupla kattintás"),
         ("Canvas pan", "Nézet mozgatása"),
         ("Canvas zoom", "Nézet nagyítása"),
-        ("Keyboard", "Billentyűzet")
+        ("Keyboard", "Billentyűzet"),
+        ("software_render_tip_windows", "Kapcsolja be, ha a GUI fehérré válik monitor nélküli PC-n, virtuális GPU-n, Microsoft Basic Display Adapteren, vagy a tálcáról visszaállítva. A GUI folyamatot újra kell indítani; a Windows szolgáltatás futhat tovább."),
     ].iter().cloned().collect();
 }

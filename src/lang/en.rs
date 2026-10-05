@@ -280,5 +280,6 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("terminal-clipboard-write-tip", "An app in the terminal wants to copy text to this device's clipboard. If granted, this permission applies to terminal apps in all connections until you turn it off in Settings. Manual copy and paste are unaffected."),
         ("port-forward-mux-tip", "Carry every connection of a port-forward mapping over a single connection to the peer, instead of connecting and logging in again for each one."),
         ("relay-fallback-delay-tip", "How long a relay connection that is already up waits for the direct WebRTC connection before it is used instead. Raise it to give a slow direct connection more time to win; lower it to settle on the relay sooner on networks where a direct connection cannot be made. Leave empty for the default of 2.5 seconds."),
+        ("software_render_tip_windows", "If the GUI turns white on a headless PC, virtual GPU, Microsoft Basic Display Adapter, or after restoring from the tray, enable this. Restart the GUI process for it to take effect; the Windows service can keep running."),
     ].iter().cloned().collect();
 }

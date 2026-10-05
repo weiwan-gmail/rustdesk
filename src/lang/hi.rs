@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", "डबल-क्लिक"),
         ("Canvas pan", "कैनवास पैन"),
         ("Canvas zoom", "कैनवास ज़ूम"),
-        ("Keyboard", "कीबोर्ड")
+        ("Keyboard", "कीबोर्ड"),
+        ("software_render_tip_windows", "हेडलेस PC, वर्चुअल GPU, Microsoft Basic Display Adapter, या ट्रे से वापस लाने पर GUI सफेद हो जाए तो इसे चालू करें। GUI प्रक्रिया को फिर से शुरू करें; Windows सेवा चलती रह सकती है।"),
     ].iter().cloned().collect();
 }

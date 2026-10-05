@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", "Doppelklick"),
         ("Canvas pan", "Sichtfeld verschieben"),
         ("Canvas zoom", "Sichtfeld zoomen"),
-        ("Keyboard", "Tastatur")
+        ("Keyboard", "Tastatur"),
+        ("software_render_tip_windows", "Aktivieren Sie dies, wenn die GUI auf einem PC ohne Monitor, mit virtueller GPU, Microsoft Basic Display Adapter oder nach dem Wiederherstellen aus dem Infobereich weiß wird. Der GUI-Prozess muss neu gestartet werden; der Windows-Dienst kann weiterlaufen."),
     ].iter().cloned().collect();
 }

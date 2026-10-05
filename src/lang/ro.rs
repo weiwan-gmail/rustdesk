@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", "Dublu clic"),
         ("Canvas pan", "Mută ecranul"),
         ("Canvas zoom", "Mărire ecran"),
-        ("Keyboard", "Tastatură")
+        ("Keyboard", "Tastatură"),
+        ("software_render_tip_windows", "Activați dacă interfața devine albă pe un PC fără monitor, GPU virtual, Microsoft Basic Display Adapter sau după restaurarea din tavă. Reporniți procesul GUI; serviciul Windows poate continua."),
     ].iter().cloned().collect();
 }

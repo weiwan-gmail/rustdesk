@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", "Nhấp đúp"),
         ("Canvas pan", "Di chuyển khung hình"),
         ("Canvas zoom", "Thu phóng khung hình"),
-        ("Keyboard", "Bàn phím")
+        ("Keyboard", "Bàn phím"),
+        ("software_render_tip_windows", "Bật nếu GUI bị trắng trên máy không màn hình, GPU ảo, Microsoft Basic Display Adapter hoặc khi khôi phục từ khay. Cần khởi động lại tiến trình GUI; dịch vụ Windows có thể tiếp tục chạy."),
     ].iter().cloned().collect();
 }

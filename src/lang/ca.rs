@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", ""),
         ("Canvas pan", ""),
         ("Canvas zoom", ""),
-        ("Keyboard", "")
+        ("Keyboard", ""),
+        ("software_render_tip_windows", "Activeu-ho si la interfície es posa blanca en un PC sense monitor, GPU virtual, Microsoft Basic Display Adapter o en restaurar des de la safata. Reinicieu el procés de la GUI; el servei de Windows pot continuar."),
     ].iter().cloned().collect();
 }

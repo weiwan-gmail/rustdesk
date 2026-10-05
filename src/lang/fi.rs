@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", "Kaksoisklikkaus"),
         ("Canvas pan", "Siirrä näkymää"),
         ("Canvas zoom", "Zoomaa näkymää"),
-        ("Keyboard", "Näppäimistö")
+        ("Keyboard", "Näppäimistö"),
+        ("software_render_tip_windows", "Ota käyttöön, jos GUI muuttuu valkoiseksi näytöttömässä PC:ssä, virtuaalisella GPU:lla, Microsoft Basic Display Adapterilla tai palautettaessa ilmoitusalueelta. Käynnistä GUI-prosessi uudelleen; Windows-palvelu voi jatkaa."),
     ].iter().cloned().collect();
 }

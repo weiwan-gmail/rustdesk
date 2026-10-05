@@ -225,9 +225,19 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
       // FancyZones moves windows exactly when they are shown. Re-arm the
       // protection if the first frame still hasn't been rendered by now (see
       // kForceRedrawTimerId).
-      if (wparam == TRUE && !first_frame_rendered_ && flutter_controller_) {
-        force_redraw_tries_ = 0;
-        SetTimer(hwnd, kForceRedrawTimerId, kForceRedrawIntervalMs, nullptr);
+      //
+      // Tray restore (windowManager.hide -> ShowWindow(SW_NORMAL)) also lands
+      // here after the first frame has already been rendered. On virtual GPUs
+      // / Basic Display the ANGLE surface can be lost while hidden; nudge a
+      // present at the current size rather than leaving a white window.
+      if (wparam == TRUE && flutter_controller_) {
+        if (!first_frame_rendered_) {
+          force_redraw_tries_ = 0;
+          SetTimer(hwnd, kForceRedrawTimerId, kForceRedrawIntervalMs, nullptr);
+        } else {
+          flutter_controller_->ForceRedraw();
+          ForceChildRefresh(flutter_controller_->view()->GetNativeWindow());
+        }
       }
       break;
   }

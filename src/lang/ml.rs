@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", ""),
         ("Canvas pan", ""),
         ("Canvas zoom", ""),
-        ("Keyboard", "")
+        ("Keyboard", ""),
+        ("software_render_tip_windows", "മോണിറ്റർ ഇല്ലാത്ത PC, വെർച്വൽ GPU, Microsoft Basic Display Adapter, അല്ലെങ്കിൽ ട്രേയിൽ നിന്ന് തിരിച്ചുവെച്ച് GUI വെളുത്താൽ ഇത് ഓണാക്കുക. GUI പ്രക്രിയ വീണ്ടും ആരംഭിക്കുക; Windows സേവനം തുടരാം."),
     ].iter().cloned().collect();
 }

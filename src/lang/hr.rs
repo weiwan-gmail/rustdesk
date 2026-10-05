@@ -792,6 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Double-click", ""),
         ("Canvas pan", ""),
         ("Canvas zoom", ""),
-        ("Keyboard", "")
+        ("Keyboard", ""),
+        ("software_render_tip_windows", "Uključite ako GUI postane bijel na PC-u bez monitora, virtualnom GPU-u, Microsoft Basic Display Adapteru ili nakon vraćanja iz trake. Ponovno pokrenite GUI proces; Windows usluga može nastaviti."),
     ].iter().cloned().collect();
 }
