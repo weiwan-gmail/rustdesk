@@ -32,6 +32,35 @@ export function webVideoCodecPreference(
   return "auto";
 }
 
+// LoginRequest.video_ack_required for the H1 lab. Priority (high → low):
+// page URL ?video_ack=0|false|1|true, localStorage rd-video-ack,
+// RUSTDESK_CONFIG.videoAckRequired, default true (stock).
+export function parseVideoAckFlag(raw?: string | null): boolean | undefined {
+  if (raw == null) return undefined;
+  const v = String(raw).trim().toLowerCase();
+  if (v === "0" || v === "false") return false;
+  if (v === "1" || v === "true") return true;
+  return undefined;
+}
+
+export function resolveVideoAckRequired(src?: {
+  query?: string | null;
+  stored?: string | null;
+  config?: unknown;
+}): boolean {
+  const fromQuery = parseVideoAckFlag(src?.query);
+  if (fromQuery !== undefined) return fromQuery;
+  const fromStored = parseVideoAckFlag(src?.stored);
+  if (fromStored !== undefined) return fromStored;
+  const cfg = src?.config;
+  if (typeof cfg === "boolean") return cfg;
+  const fromConfig = parseVideoAckFlag(
+    cfg == null || cfg === "" ? null : String(cfg)
+  );
+  if (fromConfig !== undefined) return fromConfig;
+  return true;
+}
+
 export function webSupportedDecodingPartial(prefer?: string | null): {
   ability_vp9: number;
   ability_vp8: number;

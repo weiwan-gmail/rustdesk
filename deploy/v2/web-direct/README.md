@@ -29,10 +29,13 @@
 cd deploy/v2/web-direct
 ./build.sh                 # 构建 v2 web 客户端并编译当前平台二进制
 ./build.sh --all           # 交叉编译 linux/windows/macOS 单文件
+# build.sh passes --no-web-resources-cdn so CanvasKit is served from the
+# embedded canvaskit/ tree (Flutter 3.24 otherwise loads gstatic.com).
 
 ./rustdesk-web-v2-direct                          # http://localhost:8081
 ./rustdesk-web-v2-direct --listen :9000 --open    # 指定端口并自动开浏览器
 ./rustdesk-web-v2-direct --video-codec vp8        # ask the host to encode VP8
+./rustdesk-web-v2-direct --video-ack=false        # H1 lab: login video_ack_required false
 ```
 
 打开页面后，在「Remote ID」输入框里**直接填被控端的 IP 或主机名**（如 `192.168.1.50`、`192.168.1.50:21118`、`pc2023`、`office-pc.local`、`xxx.yy.com`），输入被控端密码即可连接。客户端识别到输入是 IP/主机名就自动走直连（对齐原生客户端 `is_direct_ip_access`），纯数字 ID 仍走服务器。缺省直连端口 **21118**。`localhost` / `::1` 按 `127.0.0.1` 走 `/direct`。
@@ -58,6 +61,7 @@ Split-horizon / 内网 DNS：看起来像公网的 FQDN（`xxx.yy.com`）只要�
 - `--tls-cert/--tls-key`：可选 TLS；不提供即纯 HTTP（内网/本机免证书）。
 - `--base-path`、`--open`。
 - `--video-codec auto|vp8|vp9`：web 端发给被控端的 decode preference（`SupportedDecoding.prefer`）。省略则保持页面默认 `auto`。web-direct 只能绘制 VP8/VP9（ogv.js）；H264/AV1/H265 请在被控端用 `rustdesk --video-codec …`，或使用原生客户端。
+- `--video-ack` / `--video-ack=true|false`：web 登录 `LoginRequest.video_ack_required`。默认 `true`（与 tip 一致，省略则不注入该字段）。`--video-ack=false` 把 `videoAckRequired: false` 写入运行时 `/config.js`。详见下方 H1 lab。
 - `--default-target ip`：首次访问且 `last_remote_id` 为空时预填的 Remote ID，写入运行时 `config.js` 的 `defaultTarget`，优先于页面 hostname。省略则用 `location.hostname`（`localhost`/`::1` → `127.0.0.1`）。
 - `--control`：打开页面侧独占控制权（`/control` 挂在本进程 `--listen` 上，默认与页面同为 `:8081`，**不开 8099**）。默认关闭，行为与现在一致。
 - `--control-auto-approve`：所有申请立刻批准（隐含 `--control`）。
@@ -71,6 +75,54 @@ Split-horizon / 内网 DNS：看起来像公网的 FQDN（`xxx.yy.com`）只要�
 ## 安全说明
 
 `/direct` 是一个 WS→TCP 桥。默认只允许**回环/私网/链路本地**目标且只允许 `21118` 端口，防止它沦为开放代理。主机名会先 DNS 解析，再对**选中的解析地址**做同一套 allowlist；公网 A/AAAA 记录会被拒绝。不要用 `--allow-any` 把它暴露到不可信网络。
+
+## LAB: H1 video ACK toggle（实验，勿合入默认）
+
+**Throwaway lab.** 默认仍是 `video_ack_required: true`。不要把「关 ACK」当成产品行为合进 `develop`，直到 Wei 确认多路测量结果。
+
+Hypothesis（待测）：topology A 上多路 web 直连同一被控时，login 里 `video_ack_required: true` 加上 web 在 ogv.js decode 之后才发 `video_received`，会卡住被控 `VideoFrameController::try_wait_next`，从而拖住**所有**连接的下一帧。关 ACK 后被控在送帧时立刻 `notify_video_frame_fetched`，不再等客户端 decode。
+
+```mermaid
+flowchart LR
+  tabA["web tab A"]
+  tabB["web tab B"]
+  bridge["web-direct :8081"]
+  host["host :21118"]
+  tabA -->|"ws /direct"| bridge
+  tabB -->|"ws /direct"| bridge
+  bridge -->|"TCP"| host
+```
+
+Topology A：多个浏览器标签 → 一个 `rustdesk-web-v2-direct` → 一台被控直连口。画面走这条桥；`--control` / controlroom **正交**——房间只协调谁能键鼠，不传画面、不管 ACK。可同时开：`--control --video-ack=false`。
+
+**Host 不用重编。** 被控已按 `LoginRequest.video_ack_required` 行事（`src/server/connection.rs`）。本开关只改 web 登录请求。
+
+### 进程级：`--video-ack=false`
+
+```bash
+./rustdesk-web-v2-direct --video-ack=false
+./rustdesk-web-v2-direct --control --video-codec vp8 --video-ack=false
+```
+
+Go 把 `videoAckRequired: false` 注入运行时 `/config.js`（与 `--video-codec` / `--control` / `--default-target` 同一套 `RUSTDESK_CONFIG` 闸门）。省略或 `--video-ack` / `--video-ack=true` 时不写该字段，页面默认 `true`。Go 的 bool 旗标要用 `=` 写 false：`--video-ack=false`，不要写成 `--video-ack false`。
+
+### 单标签 A/B：`?video_ack=0`
+
+同一进程、不同标签，无需重启桥：
+
+- `http://localhost:8081/?video_ack=0` 或 `?video_ack=false` → 该标签 login `false`
+- `http://localhost:8081/?video_ack=1` 或 `?video_ack=true` → 强制 `true`（覆盖 config）
+
+可选 `localStorage` 键 `rd-video-ack`（同样 `0`/`false`/`1`/`true`），优先级低于 URL。
+
+解析顺序（高 → 低）：
+
+1. 页面 URL `?video_ack=`
+2. `localStorage['rd-video-ack']`
+3. `window.RUSTDESK_CONFIG.videoAckRequired`（`--video-ack=false` 注入）
+4. 默认 `true`
+
+测量意图：两路以上 web 同时看同一被控，对比 ACK on/off 的帧间隔 / 是否整组卡住。这 **不** 替代 `--control`。
 
 ## Design notes / 以后讨论
 
