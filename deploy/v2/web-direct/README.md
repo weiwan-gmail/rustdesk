@@ -29,6 +29,8 @@
 cd deploy/v2/web-direct
 ./build.sh                 # 构建 v2 web 客户端并编译当前平台二进制
 ./build.sh --all           # 交叉编译 linux/windows/macOS 单文件
+# build.sh passes --no-web-resources-cdn so CanvasKit is served from the
+# embedded canvaskit/ tree (Flutter 3.24 otherwise loads gstatic.com).
 
 ./rustdesk-web-v2-direct                          # http://localhost:8081
 ./rustdesk-web-v2-direct --listen :9000 --open    # 指定端口并自动开浏览器
