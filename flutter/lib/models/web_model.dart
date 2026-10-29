@@ -153,6 +153,7 @@ class PlatformFFI {
       gFFI.dialogManager.dismissAll();
       closeConnection();
     };
+    await _ffiBind.mainInit(appDir: '');
     context.callMethod('init');
     version = getByName('version');
     window.onContextMenu.listen((event) {
@@ -189,6 +190,17 @@ class PlatformFFI {
       final w = width is int ? width : int.tryParse('$width') ?? 0;
       final h = height is int ? height : int.tryParse('$height') ?? 0;
       fun(display, rgba, w, h);
+    };
+  }
+
+  // The web core calls this with a shape's pixels as bytes, as it calls onRgba for a frame.
+  void setCursorDataCallback(
+      void Function(String, int, int, int, int, Uint8List) fun) {
+    context["onCursorData"] = (String id, int hotx, int hoty, int width,
+        int height, Uint8List? rgba) {
+      if (rgba != null) {
+        fun(id, hotx, hoty, width, height, rgba);
+      }
     };
   }
 
