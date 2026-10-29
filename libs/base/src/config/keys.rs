@@ -48,6 +48,8 @@ pub const OPTION_ENABLE_RECORD_SESSION: &str = "enable-record-session";
 pub const OPTION_ENABLE_BLOCK_INPUT: &str = "enable-block-input";
 pub const OPTION_ENABLE_PRIVACY_MODE: &str = "enable-privacy-mode";
 pub const OPTION_ENABLE_PERM_CHANGE_IN_ACCEPT_WINDOW: &str = "enable-perm-change-in-accept-window";
+pub const OPTION_HIDE_ELEVATE_BUTTON_IN_ACCEPT_WINDOW: &str =
+    "hide-elevate-button-in-accept-window";
 pub const OPTION_ALLOW_SCOPE_VIOLATION_CLOSE: &str = "allow-scope-violation-close";
 pub const OPTION_ALLOW_SCOPE_VIOLATION_ALARM: &str = "allow-scope-violation-alarm";
 pub const OPTION_ALLOW_REMOTE_CONFIG_MODIFICATION: &str = "allow-remote-config-modification";
@@ -86,6 +88,7 @@ pub const OPTION_ENABLE_DIRECTX_CAPTURE: &str = "enable-directx-capture";
 pub const OPTION_ENABLE_ANDROID_SOFTWARE_ENCODING_HALF_SCALE: &str =
     "enable-android-software-encoding-half-scale";
 pub const OPTION_ENABLE_TRUSTED_DEVICES: &str = "enable-trusted-devices";
+pub const OPTION_TRUSTED_DEVICE_EXPIRATION: &str = "trusted-device-expiration-days";
 pub const OPTION_AV1_TEST: &str = "av1-test";
 /// Maximum number of files allowed during a single file transfer request.
 ///
@@ -309,6 +312,7 @@ pub const KEYS_SETTINGS: &[&str] = &[
     OPTION_API_SERVER,
     OPTION_KEY,
     OPTION_ALLOW_WEBSOCKET,
+    OPTION_WEBSOCKET_PORT,
     OPTION_PRESET_ADDRESS_BOOK_NAME,
     OPTION_PRESET_ADDRESS_BOOK_TAG,
     OPTION_PRESET_ADDRESS_BOOK_ALIAS,
@@ -320,6 +324,7 @@ pub const KEYS_SETTINGS: &[&str] = &[
     OPTION_ENABLE_DIRECTX_CAPTURE,
     OPTION_ENABLE_ANDROID_SOFTWARE_ENCODING_HALF_SCALE,
     OPTION_ENABLE_TRUSTED_DEVICES,
+    OPTION_TRUSTED_DEVICE_EXPIRATION,
     OPTION_RELAY_SERVER,
     OPTION_ICE_SERVERS,
     OPTION_DISABLE_UDP,
@@ -366,6 +371,7 @@ pub const KEYS_BUILDIN_SETTINGS: &[&str] = &[
     OPTION_DISABLE_UNLOCK_PIN,
     OPTION_USE_RAW_TCP_FOR_API,
     OPTION_ENABLE_PERM_CHANGE_IN_ACCEPT_WINDOW,
+    OPTION_HIDE_ELEVATE_BUTTON_IN_ACCEPT_WINDOW,
     OPTION_ALLOW_COMMAND_LINE_SETTINGS_WHEN_SETTINGS_DISABLED,
 ];
 

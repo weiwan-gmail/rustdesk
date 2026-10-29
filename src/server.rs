@@ -21,7 +21,9 @@ use hbb_common::{
     rendezvous_proto::*,
     socket_client,
     sodiumoxide::crypto::{box_, sign},
-    timeout, tokio, ResultType, Stream,
+    timeout, tokio,
+    websocket::{check_ws, is_ws_endpoint},
+    ResultType, Stream,
 };
 use base::message_proto::*;
 use scrap::camera;
@@ -182,6 +184,7 @@ async fn accept_connection_(
     socket: Stream,
     secure: bool,
     meta: ConnectionMeta,
+    slot: crate::rendezvous_mediator::PunchSlot,
 ) -> ResultType<()> {
     let local_addr = socket.local_addr();
     drop(socket);
@@ -191,6 +194,8 @@ async fn accept_connection_(
     let listener = new_listener(local_addr, true).await?;
     log::info!("Server listening on: {}", &listener.local_addr()?);
     if let Ok((stream, addr)) = timeout(CONNECT_TIMEOUT, listener.accept()).await? {
+        // The peer is in: the place goes back before the session runs, as every punch's does.
+        drop(slot);
         stream.set_nodelay(true).ok();
         let stream_addr = stream.local_addr()?;
         create_tcp_connection(
@@ -221,6 +226,8 @@ pub async fn create_tcp_connection(
     let Some(unauthorized) = admit_unauthorized(id, addr.ip()) else {
         bail!("too many unauthenticated connections from {}", addr.ip());
     };
+    // Before the handshake, so its read is bounded too; lifted again at authorization.
+    stream.set_max_packet_length(MAX_UNAUTHORIZED_MESSAGE);
     tokio::select! {
         handshake = identity_handshake(&mut stream, secure) => handshake?,
         _ = unauthorized.evicted() => {
@@ -271,12 +278,21 @@ async fn identity_handshake(stream: &mut Stream, secure: bool) -> ResultType<()>
         if stream.is_webrtc() && dtls_fingerprint.is_empty() {
             bail!("WebRTC local DTLS fingerprint unavailable");
         }
+        // A WebRTC stream is encrypted by DTLS and takes no stream key of its own, split or
+        // not, so what it advertises is what it runs: 0. Saying 1 there would have a future
+        // controller that splits keys on WebRTC agree on a version this side never applies.
+        let advertised = if stream.is_webrtc() {
+            0
+        } else {
+            tcp::KX_VERSION_LATEST
+        };
         msg_out.set_signed_id(SignedId {
             id: sign::sign(
                 &IdPk {
                     id: Config::get_id(),
                     pk: Bytes::from(our_pk_b.0.to_vec()),
                     dtls_fingerprint,
+                    kx_version: advertised,
                     ..Default::default()
                 }
                 .write_to_bytes()
@@ -293,11 +309,28 @@ async fn identity_handshake(stream: &mut Stream, secure: bool) -> ResultType<()>
                 if let Ok(msg_in) = Message::parse_from_bytes(&bytes) {
                     if let Some(message::Union::PublicKey(pk)) = msg_in.union {
                         if pk.asymmetric_value.len() == box_::PUBLICKEYBYTES {
-                            stream.set_key(tcp::Encrypt::decode(
+                            let key = tcp::Encrypt::decode(
                                 &pk.symmetric_value,
                                 &pk.asymmetric_value,
                                 &our_sk_b,
-                            )?);
+                            )?;
+                            if pk.kx_version > advertised {
+                                bail!(
+                                    "Handshake failed: key exchange version {} not offered, {} was",
+                                    pk.kx_version,
+                                    advertised
+                                );
+                            }
+                            stream.set_negotiated_key(
+                                key,
+                                false,
+                                &tcp::KxTranscript {
+                                    initiator_pk: &pk.asymmetric_value,
+                                    responder_pk: &our_pk_b.0,
+                                    advertised,
+                                    picked: pk.kx_version,
+                                },
+                            )?;
                         } else if pk.asymmetric_value.is_empty() {
                             Config::set_key_confirmed(false);
                             log::info!("Force to update pk");
@@ -320,14 +353,15 @@ async fn identity_handshake(stream: &mut Stream, secure: bool) -> ResultType<()>
     Ok(())
 }
 
-pub async fn accept_connection(
+pub(crate) async fn accept_connection(
     server: ServerPtr,
     socket: Stream,
     peer_addr: SocketAddr,
     secure: bool,
     meta: ConnectionMeta,
+    slot: crate::rendezvous_mediator::PunchSlot,
 ) {
-    if let Err(err) = accept_connection_(server, socket, secure, meta).await {
+    if let Err(err) = accept_connection_(server, socket, secure, meta, slot).await {
         log::warn!("Failed to accept connection from {}: {}", peer_addr, err);
     }
 }
@@ -370,8 +404,11 @@ async fn create_relay_connection_(
     ipv4: bool,
     meta: ConnectionMeta,
 ) -> ResultType<()> {
+    // The proxy's address family does not constrain the relay target.
+    let relay_server = crate::check_port(relay_server, RELAY_PORT);
+    let use_ws_proxy = Config::is_proxy() && is_ws_endpoint(&check_ws(&relay_server));
     let mut stream = socket_client::connect_tcp(
-        socket_client::ipv4_to_ipv6(crate::check_port(relay_server, RELAY_PORT), ipv4),
+        socket_client::ipv4_to_ipv6(relay_server, ipv4 || use_ws_proxy),
         CONNECT_TIMEOUT,
     )
     .await?;
@@ -611,6 +648,7 @@ pub fn check_zombie() {
 #[cfg(any(target_os = "android", target_os = "ios"))]
 #[tokio::main]
 pub async fn start_server(_is_server: bool) {
+    allow_err!(crate::trusted_devices::initialize());
     crate::RendezvousMediator::start_all().await;
 }
 
@@ -675,6 +713,7 @@ pub async fn start_server(is_server: bool, no_server: bool) {
         }
         #[cfg(any(target_os = "macos", target_os = "linux"))]
         wait_initial_config_sync().await;
+        allow_err!(crate::trusted_devices::initialize());
         #[cfg(target_os = "windows")]
         crate::platform::try_kill_broker();
         #[cfg(feature = "hwcodec")]
@@ -688,11 +727,21 @@ pub async fn start_server(is_server: bool, no_server: bool) {
                         match data {
                             Data::SyncConfig(Some(configs)) => {
                                 let (config, config2) = *configs;
-                                if Config::set(config) {
-                                    log::info!("config synced");
-                                }
-                                if Config2::set(config2) {
-                                    log::info!("config2 synced");
+                                #[cfg(target_os = "windows")]
+                                allow_err!(
+                                    crate::trusted_devices::config::update(move || {
+                                        crate::trusted_devices::config::sync_config(config, config2)
+                                    })
+                                    .await
+                                );
+                                #[cfg(not(target_os = "windows"))]
+                                {
+                                    if Config::set(config) {
+                                        log::info!("config synced");
+                                    }
+                                    if Config2::set(config2) {
+                                        log::info!("config2 synced");
+                                    }
                                 }
                             }
                             _ => {}
@@ -801,7 +850,7 @@ async fn sync_and_watch_config_dir(sync_done_tx: Option<tokio::sync::oneshot::Se
     use hbb_common::sleep;
     for i in 1..=tries {
         sleep(i as f32 * CONFIG_SYNC_INTERVAL_SECS).await;
-        match crate::ipc::connect_service(1000).await {
+        match crate::ipc::connect_trusted_device_service(1000).await {
             Ok(mut conn) => {
                 if !synced {
                     if conn.send(&Data::SyncConfig(None)).await.is_ok() {
@@ -813,16 +862,25 @@ async fn sync_and_watch_config_dir(sync_done_tx: Option<tokio::sync::oneshot::Se
                                     #[cfg(target_os = "macos")]
                                     let _chk_pk = crate::CheckIfResendPk::new();
                                     if !config.is_empty() {
-                                        if cfg0.0 != config {
-                                            cfg0.0 = config.clone();
-                                            Config::set(config);
-                                            log::info!("sync config from root");
+                                        let result =
+                                            crate::trusted_devices::config::update(move || {
+                                                crate::trusted_devices::config::sync_config(
+                                                    config.clone(),
+                                                    config2.clone(),
+                                                )?;
+                                                Ok((config, config2))
+                                            })
+                                            .await;
+                                        match result {
+                                            Ok(configs) => cfg0 = configs,
+                                            Err(error) => {
+                                                crate::trusted_devices::config::log_sync_error(
+                                                    error,
+                                                );
+                                                continue;
+                                            }
                                         }
-                                        if cfg0.1 != config2 {
-                                            cfg0.1 = config2.clone();
-                                            Config2::set(config2);
-                                            log::info!("sync config2 from root");
-                                        }
+                                        log::info!("sync config from root");
                                     } else {
                                         // only on macos, because this issue was only reproduced on macos
                                         #[cfg(target_os = "macos")]
@@ -863,7 +921,7 @@ async fn sync_and_watch_config_dir(sync_done_tx: Option<tokio::sync::oneshot::Se
                         match conn.send(&Data::SyncConfig(Some(cfg.clone().into()))).await {
                             Err(e) => {
                                 log::error!("sync config to root failed: {}", e);
-                                match crate::ipc::connect_service(1000).await {
+                                match crate::ipc::connect_trusted_device_service(1000).await {
                                     Ok(mut _conn) => {
                                         conn = _conn;
                                         log::info!("reconnected to ipc_service");
@@ -872,9 +930,18 @@ async fn sync_and_watch_config_dir(sync_done_tx: Option<tokio::sync::oneshot::Se
                                 }
                             }
                             _ => {
-                                cfg0 = cfg;
-                                conn.next_timeout(1000).await.ok();
-                                is_root_config_empty = false;
+                                match conn.next_timeout(1000).await {
+                                    Ok(Some(Data::SyncConfig(None))) => {
+                                        cfg0 = cfg;
+                                        is_root_config_empty = false;
+                                    }
+                                    Ok(Some(Data::SecurityConfigError(error))) => {
+                                        crate::trusted_devices::config::log_sync_error(error)
+                                    }
+                                    _ => crate::trusted_devices::config::log_sync_error(
+                                        "Host did not confirm configuration sync",
+                                    ),
+                                }
                             }
                         }
                     }
