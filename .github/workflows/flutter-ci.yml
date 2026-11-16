@@ -3,6 +3,17 @@ name: Full Flutter CI
 on:
   workflow_dispatch:
     inputs:
+      platforms:
+        description: "Which platforms to build. windows-linux-web skips Android/macOS/iOS."
+        type: choice
+        default: windows-linux-web
+        options:
+          - windows
+          - linux
+          - web-direct
+          - windows-linux-web
+          - all-common
+          - full
       upload-artifact:
         description: "Upload artifacts and publish to a GitHub Release"
         type: boolean
@@ -11,22 +22,6 @@ on:
         description: "Release tag to publish to (prerelease). Default nightly."
         type: string
         default: "nightly"
-  pull_request:
-    paths-ignore:
-    - "docs/**"
-    - "README.md"
-    - ".github/**/*.md"
-  push:
-    branches:
-      - master
-      - develop
-    paths-ignore:
-      - "docs/**"
-      - "README.md"
-      - ".github/**/*.md"
-      - "res/**"
-      - "appimage/**"
-      - "flatpak/**"
 
 jobs:
   run-ci:
@@ -36,11 +31,7 @@ jobs:
     uses: ./.github/workflows/flutter-build.yml
     secrets: inherit
     with:
-      # Publish on push to master/develop, and on manual Run workflow
-      # (default upload-artifact=true). Pull requests stay artifact-free.
-      upload-artifact: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.upload-artifact) }}
-      upload-tag: ${{ (github.event_name == 'workflow_dispatch' && inputs.upload-tag) || 'nightly' }}
-      # PR / develop / master / manual dispatch: only the common packages
-      # (Windows x64, Linux amd64+arm64, macOS arm64, Android arm64).
-      # Nightly and tag workflows keep the default full-build: true.
-      full-build: false
+      upload-artifact: ${{ inputs.upload-artifact }}
+      upload-tag: ${{ inputs.upload-tag || 'nightly' }}
+      full-build: ${{ inputs.platforms == 'full' }}
+      platforms: ${{ inputs.platforms }}

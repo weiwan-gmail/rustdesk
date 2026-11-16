@@ -9,9 +9,9 @@ on:
       upload-tag:
         type: string
         default: "nightly"
-      # When false (PR / push to develop|master via flutter-ci.yml), only the
-      # common packages are built; everything else is skipped via `if:`.
-      # Nightly and tag workflows leave this at the default (true).
+      # When false, only the common packages are built; everything else is
+      # skipped via `if:`. Nightly and tag workflows leave this at the default
+      # (true). `platforms` can further limit the matrix for manual runs.
       #
       # Common packages:
       #   - Windows x64 (Flutter)
@@ -24,6 +24,33 @@ on:
       publish-update-metadata:
         type: boolean
         default: false
+      # Empty keeps existing full-build gating (including macOS/Android on slim).
+      # Manual dispatch uses a non-empty value so Windows/Linux/web-direct can
+      # run without Android/macOS.
+      platforms:
+        type: string
+        default: ""
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: "Which platforms to build. windows-linux-web skips Android/macOS/iOS."
+        type: choice
+        default: windows-linux-web
+        options:
+          - windows
+          - linux
+          - web-direct
+          - windows-linux-web
+          - all-common
+          - full
+      upload-artifact:
+        description: "Upload artifacts and publish to a GitHub Release"
+        type: boolean
+        default: true
+      upload-tag:
+        description: "Release tag to publish to (prerelease). Default nightly."
+        type: string
+        default: "nightly"
 
 # Needed so the "Publish ... package"/"Publish Release" steps (softprops/action-gh-release)
 # can create/update releases, and so rustdesk-org/run-on-arch-action can push its
@@ -85,6 +112,7 @@ jobs:
   # `full-build: false` keeps only the common packages; nightly/tag leave
   # the default true and get the full lists.
   select-build-matrix:
+    if: ${{ inputs.platforms != 'web-direct' && inputs.platforms != 'linux' }}
     runs-on: ubuntu-latest
     outputs:
       windows-flutter: ${{ steps.set.outputs.windows-flutter }}
@@ -94,11 +122,12 @@ jobs:
       - id: set
         env:
           FULL_BUILD: ${{ inputs.full-build }}
+          PLATFORMS: ${{ inputs.platforms }}
         run: |
           python3 <<'PY'
           import json, os
 
-          full = os.environ["FULL_BUILD"].lower() == "true"
+          full = os.environ["FULL_BUILD"].lower() == "true" or os.environ.get("PLATFORMS", "") == "full"
           windows = [
               {
                   "target": "x86_64-pc-windows-msvc",
@@ -188,6 +217,7 @@ jobs:
         run: python res/update/generate_update_metadata.py check-key
 
   generate-sbom:
+    if: ${{ inputs.platforms != 'web-direct' }}
     needs: [validate-update-metadata-keys]
     runs-on: ubuntu-latest
 
@@ -217,16 +247,18 @@ jobs:
             rustdesk.sbom.json
 
   generate-bridge:
+    if: ${{ inputs.platforms != 'web-direct' }}
     needs: [validate-update-metadata-keys]
     uses: ./.github/workflows/bridge.yml
     with:
-      full-build: ${{ inputs.full-build }}
+      full-build: ${{ inputs.full-build || inputs.platforms == 'full' }}
 
   # v1 web helpers are retired (archive: deploy/v1_backup). This job no longer
   # compiles Flutter 3.19.6 / v1 binaries. Current web client is deploy/v2.
   # The script writes a marker artifact so Windows/Linux jobs can still
   # download it; packaging skips helpers when per-triple dirs are empty.
   build-web-helpers:
+    if: ${{ inputs.platforms != 'web-direct' }}
     name: build rustdesk-web helpers
     runs-on: ubuntu-24.04
     steps:
@@ -246,6 +278,7 @@ jobs:
           if-no-files-found: error
 
   build-RustDeskTempTopMostWindow:
+    if: ${{ inputs.platforms == '' || inputs.platforms == 'all-common' || inputs.platforms == 'full' || inputs.platforms == 'windows' || inputs.platforms == 'windows-linux-web' }}
     needs: [validate-update-metadata-keys]
     uses: ./.github/workflows/third-party-RustDeskTempTopMostWindow.yml
     strategy:
@@ -269,9 +302,10 @@ jobs:
       # Windows ARM64 overlay is only needed by the Windows ARM64 Flutter job.
       # Pass via `enabled` rather than job-level `if` + matrix: reusable workflow
       # jobs may not evaluate the caller's matrix context in `if`.
-      enabled: ${{ inputs.full-build || matrix.job.platform == 'x64' }}
+      enabled: ${{ inputs.full-build || inputs.platforms == 'full' || matrix.job.platform == 'x64' }}
 
   build-for-windows-flutter:
+    if: ${{ inputs.platforms == '' || inputs.platforms == 'all-common' || inputs.platforms == 'full' || inputs.platforms == 'windows' || inputs.platforms == 'windows-linux-web' }}
     name: ${{ matrix.job.target }}
     needs: [select-build-matrix, build-RustDeskTempTopMostWindow, generate-bridge, build-web-helpers]
     runs-on: ${{ matrix.job.os }}
@@ -652,7 +686,7 @@ jobs:
             ./SignOutput/rustdesk-*.exe
 
   build-rustdesk-ios:
-    if: ${{ inputs.full-build && inputs.upload-artifact }}
+    if: ${{ (inputs.full-build || inputs.platforms == 'full') && inputs.upload-artifact }}
     name: build rustdesk ios ipa
     runs-on: ${{ matrix.job.os }}
     needs: [generate-bridge]
@@ -774,6 +808,7 @@ jobs:
 
 
   build-for-macOS:
+    if: ${{ inputs.platforms == '' || inputs.platforms == 'all-common' || inputs.platforms == 'full' }}
     name: ${{ matrix.job.target }}
     runs-on: ${{ matrix.job.os }}
     needs: [select-build-matrix, generate-bridge]
@@ -1167,7 +1202,7 @@ jobs:
       - build-for-macOS
       - build-for-windows-flutter
     runs-on: ubuntu-latest
-    if: ${{ inputs.full-build && inputs.upload-artifact }}
+    if: ${{ (inputs.full-build || inputs.platforms == 'full') && inputs.upload-artifact }}
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -1198,6 +1233,7 @@ jobs:
           files: rustdesk-${{ env.VERSION }}-unsigned.tar.gz
 
   build-rustdesk-android:
+    if: ${{ inputs.platforms == '' || inputs.platforms == 'all-common' || inputs.platforms == 'full' }}
     needs: [select-build-matrix, generate-bridge]
     name: build rustdesk android apk ${{ matrix.job.target }}
     runs-on: ${{ matrix.job.os }}
@@ -1485,7 +1521,7 @@ jobs:
   build-rustdesk-android-universal:
     needs: [build-rustdesk-android]
     name: build rustdesk android universal apk
-    if: ${{ inputs.full-build && inputs.upload-artifact }}
+    if: ${{ (inputs.full-build || inputs.platforms == 'full') && inputs.upload-artifact }}
     runs-on: ubuntu-24.04
     env:
       reltype: release
@@ -1680,6 +1716,7 @@ jobs:
             signed-apk/rustvibe-${{ env.VERSION }}-universal${{ env.suffix }}.apk
 
   build-rustdesk-linux:
+    if: ${{ inputs.platforms == '' || inputs.platforms == 'all-common' || inputs.platforms == 'full' || inputs.platforms == 'linux' || inputs.platforms == 'windows-linux-web' }}
     needs: [generate-bridge, build-web-helpers]
     name: build rustdesk linux ${{ matrix.job.target }}
     runs-on: ${{ matrix.job.on }}
@@ -2062,6 +2099,7 @@ jobs:
   # old for it. A separate job rather than a matrix entry of build-rustdesk-linux: appimage and
   # flatpak need that job, and a failure here must not skip them.
   build-rustdesk-linux-drm:
+    if: ${{ inputs.platforms == '' || inputs.platforms == 'full' }}
     needs: [generate-bridge]
     name: build rustdesk linux drm x86_64
     runs-on: ubuntu-22.04
@@ -2381,7 +2419,7 @@ jobs:
           path: ${{ env.DRM_DEB }}
 
   build-rustdesk-linux-sciter:
-    if: ${{ inputs.full-build && inputs.upload-artifact }}
+    if: ${{ (inputs.full-build || inputs.platforms == 'full') && inputs.upload-artifact }}
     needs: [validate-update-metadata-keys]
     runs-on: ${{ matrix.job.on }}
     name: build-rustdesk-linux-sciter ${{ matrix.job.target }}
@@ -2660,7 +2698,7 @@ jobs:
     name: Build appimage ${{ matrix.job.target }}
     needs: [build-rustdesk-linux]
     runs-on: ubuntu-22.04
-    if: ${{ inputs.full-build && inputs.upload-artifact }}
+    if: ${{ (inputs.full-build || inputs.platforms == 'full') && inputs.upload-artifact }}
     strategy:
       fail-fast: false
       matrix:
@@ -2715,7 +2753,7 @@ jobs:
       - build-rustdesk-linux
       - build-rustdesk-linux-sciter
     runs-on: ${{ matrix.job.on }}
-    if: ${{ inputs.full-build && inputs.upload-artifact }}
+    if: ${{ (inputs.full-build || inputs.platforms == 'full') && inputs.upload-artifact }}
     strategy:
       fail-fast: false
       matrix:
@@ -2912,3 +2950,51 @@ jobs:
           tag_name: ${{ env.TAG_NAME }}
           files: |
             flutter/build/rustdesk-${{ env.VERSION }}-${{ env.RELEASE_NAME }}.tar.gz
+
+  build-web-direct:
+    if: ${{ inputs.platforms == 'web-direct' || inputs.platforms == 'windows-linux-web' || inputs.platforms == 'full' }}
+    name: build rustdesk web-direct
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y golang-go protobuf-compiler unzip
+
+      - name: Install flutter
+        uses: subosito/flutter-action@2783a3f08e1baf891508463f8c6653c258246225 # v2.12.0
+        with:
+          channel: "stable"
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Build web-direct binaries
+        run: ./deploy/v2/web-direct/build.sh --all
+
+      - name: Upload web-direct artifacts
+        if: env.UPLOAD_ARTIFACT == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rustdesk-web-v2-direct
+          path: |
+            deploy/v2/web-direct/rustdesk-web-v2-direct
+            deploy/v2/web-direct/rustdesk-web-v2-direct.exe
+            deploy/v2/web-direct/rustdesk-web-v2-direct-linux-arm64
+            deploy/v2/web-direct/rustdesk-web-v2-direct-macos-amd64
+            deploy/v2/web-direct/rustdesk-web-v2-direct-macos-arm64
+          if-no-files-found: error
+
+      - name: Publish web-direct
+        if: env.UPLOAD_ARTIFACT == 'true'
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
+        with:
+          prerelease: true
+          tag_name: ${{ env.TAG_NAME }}
+          files: |
+            deploy/v2/web-direct/rustdesk-web-v2-direct
+            deploy/v2/web-direct/rustdesk-web-v2-direct.exe
+            deploy/v2/web-direct/rustdesk-web-v2-direct-linux-arm64
+            deploy/v2/web-direct/rustdesk-web-v2-direct-macos-amd64
+            deploy/v2/web-direct/rustdesk-web-v2-direct-macos-arm64
