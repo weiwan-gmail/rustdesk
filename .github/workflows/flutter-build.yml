@@ -31,6 +31,7 @@ on:
 # inside Ubuntu 18.04). The calling workflow must grant at least this much too,
 # since a reusable workflow's GITHUB_TOKEN permissions can only be downgraded,
 # never elevated, relative to what the caller job allows.
+
 permissions:
   contents: write
   packages: write

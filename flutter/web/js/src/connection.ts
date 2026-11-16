@@ -13,6 +13,7 @@ import {
 import { version } from "./gen_js_from_hbb";
 import {
   enqueueVideoFrame,
+  resolveVideoAckRequired,
   sidToStartVideo,
   videoFrameAction,
   videoFrameKind,
@@ -31,7 +32,9 @@ import { isDirectTarget, normalizeDirectTarget } from "./direct_target";
 export const PORT = 21116;
 export { DIRECT_PORT } from "./direct_target";
 // Deployment-time configuration, served as config.js next to index.html.
-// window.RUSTDESK_CONFIG = { server, wsIdPath, wsRelayPath, direct?, directPath, defaultTarget?, control?, controlPath, controlBar?, videoCodec? }
+// window.RUSTDESK_CONFIG = { server, wsIdPath, wsRelayPath, direct?, directPath, defaultTarget?, control?, controlPath, controlBar?, videoCodec?, videoAckRequired? }
+// LoginRequest.video_ack_required (high → low): page URL ?video_ack=0|false|1|true,
+// localStorage rd-video-ack, RUSTDESK_CONFIG.videoAckRequired, default true.
 const CONF: any = (window as any).RUSTDESK_CONFIG || {};
 
 function wsSchema(): string {
@@ -487,6 +490,15 @@ export default class Connection {
   }
 
   _sendLoginMessage(login: { os_login?: message.OSLogin; password?: Uint8Array }) {
+    const cfg: any = (window as any).RUSTDESK_CONFIG || CONF;
+    let query: string | null = null;
+    let stored: string | null = null;
+    try {
+      query = new URLSearchParams(location.search).get("video_ack");
+    } catch {}
+    try {
+      stored = localStorage.getItem("rd-video-ack");
+    } catch {}
     const login_request = message.LoginRequest.fromPartial({
       username: this._id!,
       my_id: "web",
@@ -496,7 +508,11 @@ export default class Connection {
       hwid: globals.getHwid(),
       password: login.password,
       option: this.getOptionMessage(),
-      video_ack_required: true,
+      video_ack_required: resolveVideoAckRequired({
+        query,
+        stored,
+        config: cfg.videoAckRequired,
+      }),
       os_login: login.os_login,
     });
     this._ws?.sendMessage({ login_request });

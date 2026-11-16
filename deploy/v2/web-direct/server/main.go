@@ -48,6 +48,7 @@ var (
 	controlAutoApprove = flag.Bool("control-auto-approve", false, "approve every control request immediately (implies --control)")
 	videoCodec         = flag.String("video-codec", "", "web decode preference: auto, vp8, or vp9 (ogv.js). Empty keeps the page default (auto).")
 	defaultTarget      = flag.String("default-target", "", "optional first-visit Remote ID prefill (config.js defaultTarget); overrides the page hostname when set")
+	videoAck           = flag.Bool("video-ack", true, "web LoginRequest.video_ack_required (default true). --video-ack=false injects videoAckRequired: false for the H1 lab")
 )
 
 var allowedNets []*net.IPNet
@@ -74,7 +75,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/direct", handleDirect)
-	if controlOn() || videoCodecSet() || defaultTargetSet() {
+	if controlOn() || videoCodecSet() || defaultTargetSet() || videoAckDisabled() {
 		if controlOn() {
 			attachControlRoom(mux, *controlAutoApprove)
 			log.Printf("control room: /control (auto-approve=%v)", *controlAutoApprove)
@@ -85,6 +86,9 @@ func main() {
 		}
 		if defaultTargetSet() {
 			log.Printf("default target: %s", strings.TrimSpace(*defaultTarget))
+		}
+		if videoAckDisabled() {
+			log.Printf("video ack required: false (H1 lab)")
 		}
 	}
 
@@ -133,6 +137,10 @@ func defaultTargetSet() bool {
 	return strings.TrimSpace(*defaultTarget) != ""
 }
 
+func videoAckDisabled() bool {
+	return !*videoAck
+}
+
 func normalizeVideoCodec(s string) (string, error) {
 	v := strings.ToLower(strings.TrimSpace(s))
 	switch v {
@@ -143,7 +151,7 @@ func normalizeVideoCodec(s string) (string, error) {
 	}
 }
 
-func runtimeConfigJS(control bool, videoCodec, defaultTarget string) string {
+func runtimeConfigJS(control bool, videoCodec, defaultTarget string, videoAckRequired bool) string {
 	var b strings.Builder
 	b.WriteString(`window.RUSTDESK_CONFIG = {server: "", wsIdPath: "/ws/id", wsRelayPath: "/ws/relay", direct: true`)
 	if control {
@@ -154,6 +162,9 @@ func runtimeConfigJS(control bool, videoCodec, defaultTarget string) string {
 	}
 	if t := strings.TrimSpace(defaultTarget); t != "" {
 		fmt.Fprintf(&b, `, defaultTarget: %q`, t)
+	}
+	if !videoAckRequired {
+		b.WriteString(`, videoAckRequired: false`)
 	}
 	b.WriteString("};\n")
 	return b.String()
@@ -166,7 +177,7 @@ func attachControlRoom(mux *http.ServeMux, autoApprove bool) {
 
 func serveRuntimeConfig(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/javascript")
-	fmt.Fprint(w, runtimeConfigJS(controlOn(), *videoCodec, *defaultTarget))
+	fmt.Fprint(w, runtimeConfigJS(controlOn(), *videoCodec, *defaultTarget, *videoAck))
 }
 
 // handleDirect bridges /direct?target=HOST:PORT to the controlled client's

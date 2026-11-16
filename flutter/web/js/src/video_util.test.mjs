@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   enqueueVideoFrame,
   MAX_PENDING_VIDEO_FRAMES,
+  parseVideoAckFlag,
+  resolveVideoAckRequired,
   shouldAutoSelectWindowsSession,
   sidToStartVideo,
   videoFrameAction,
@@ -10,6 +12,50 @@ import {
   webSupportedDecodingPartial,
   windowsSessionsForPicker,
 } from "./video_util.ts";
+
+describe("resolveVideoAckRequired", () => {
+  it("defaults to true when nothing is set", () => {
+    assert.equal(resolveVideoAckRequired(), true);
+    assert.equal(resolveVideoAckRequired({}), true);
+    assert.equal(parseVideoAckFlag(undefined), undefined);
+    assert.equal(parseVideoAckFlag("maybe"), undefined);
+  });
+  it("parses 0/false and 1/true", () => {
+    assert.equal(parseVideoAckFlag("0"), false);
+    assert.equal(parseVideoAckFlag("false"), false);
+    assert.equal(parseVideoAckFlag("FALSE"), false);
+    assert.equal(parseVideoAckFlag("1"), true);
+    assert.equal(parseVideoAckFlag("true"), true);
+  });
+  it("uses query, then localStorage, then config", () => {
+    assert.equal(
+      resolveVideoAckRequired({
+        query: "0",
+        stored: "1",
+        config: true,
+      }),
+      false
+    );
+    assert.equal(
+      resolveVideoAckRequired({
+        query: "true",
+        stored: "0",
+        config: false,
+      }),
+      true
+    );
+    assert.equal(
+      resolveVideoAckRequired({ stored: "false", config: true }),
+      false
+    );
+    assert.equal(resolveVideoAckRequired({ config: false }), false);
+    assert.equal(resolveVideoAckRequired({ config: true }), true);
+    assert.equal(
+      resolveVideoAckRequired({ query: "maybe", stored: "nope", config: false }),
+      false
+    );
+  });
+});
 
 describe("webSupportedDecodingPartial", () => {
   it("advertises only VP8/VP9 so the host will not pick H264/AV1", () => {

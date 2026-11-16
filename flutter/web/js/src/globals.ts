@@ -26,10 +26,16 @@ declare global {
     onGlobalEvent: (message: string) => void;
     onRgba: (display: number, rgba: Uint8Array, width?: number, height?: number) => void;
     onRegisteredEvent: (message: string) => void;
+    reloadShortcuts: (cfg?: string) => void;
+    onShortcutTriggered?: (action: string) => void;
   }
 }
 
 window.curConn = undefined;
+
+// Dart bridge.dart mainInit / mainReloadKeyboardShortcuts call this
+// (Keyboard shortcuts #14933 via #47). Upstream has no shortcut_matcher.ts yet.
+window.reloadShortcuts = (_cfg?: string) => {};
 
 window.isMobile = () => {
   return /(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|ipad|iris|kindle|Android|Silk|lge |maemo|midp|mmp|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows (ce|phone)|xda|xiino/i.test(

@@ -84,8 +84,12 @@ if ! "$FLUTTER_BIN" --version 2>/dev/null | grep -q "Flutter $FLUTTER_VERSION"; 
   echo "!! Flutter $FLUTTER_VERSION is required on PATH (or set FLUTTER_ROOT)"
   exit 1
 fi
-echo ">> flutter build web --base-href $BASE_HREF"
-(cd "$SRC" && "$FLUTTER_BIN" build web --release --base-href "$BASE_HREF")
+# Flutter 3.24 defaults --web-resources-cdn on, which makes flutter_bootstrap.js
+# fetch CanvasKit from gstatic.com instead of the canvaskit/ files we embed.
+# web-direct is a LAN/intranet binary; without this flag the UI never starts
+# (and "connect" looks dead) when the PC cannot reach Google.
+echo ">> flutter build web --base-href $BASE_HREF --no-web-resources-cdn"
+(cd "$SRC" && "$FLUTTER_BIN" build web --release --base-href "$BASE_HREF" --no-web-resources-cdn)
 
 # --- 4. stage into the Go binary's static dir + build -------------------------
 # flutter build web copies all of web/ into the output; drop build-time-only

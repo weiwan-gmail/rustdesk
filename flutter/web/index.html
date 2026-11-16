@@ -93,6 +93,9 @@
   <div class="loading">
     <div class="loader"></div>
   </div>
+  <!-- Dart mainInit calls window.reloadShortcuts before the JS module may
+       finish; stub here so flutter_bootstrap.js cannot throw. -->
+  <script>window.reloadShortcuts = window.reloadShortcuts || function () {};</script>
   <!-- Flutter 3.24 bootstrap: flutter build web generates flutter_bootstrap.js,
        which loads main.dart.js and removes the loading placeholder above. -->
   <script src="flutter_bootstrap.js" async></script>

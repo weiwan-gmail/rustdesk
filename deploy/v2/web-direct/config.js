@@ -8,6 +8,10 @@
 //
 // control / controlPath / controlBar: optional exclusive control room. Default
 // off. rustdesk-web-v2-direct --control injects control: true at runtime.
+//
+// videoAckRequired: optional LoginRequest.video_ack_required. Unset keeps the
+// page default true. rustdesk-web-v2-direct --video-ack=false injects false
+// at runtime (H1 lab). Per-tab override: ?video_ack=0 on the page URL.
 window.RUSTDESK_CONFIG = {
   server: "",
   wsIdPath: "/ws/id",
